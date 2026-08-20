@@ -61,4 +61,19 @@ export class LeadRepository {
       where: { id },
     });
   }
+
+  async bulkDelete(ids: number[]): Promise<number> {
+    const result = await prisma.lead.deleteMany({
+      where: { id: { in: ids } },
+    });
+    return result.count;
+  }
+
+  async bulkUpdate(ids: number[], data: Record<string, unknown>): Promise<number> {
+    const result = await prisma.lead.updateMany({
+      where: { id: { in: ids } },
+      data,
+    });
+    return result.count;
+  }
 }

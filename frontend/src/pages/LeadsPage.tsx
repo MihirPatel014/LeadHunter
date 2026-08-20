@@ -10,12 +10,15 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
-  Filter,
   RefreshCw,
   Building2,
+  CheckSquare,
+  Square,
+  Minus,
+  MapPin,
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 import { leadService } from '../services/leadService';
 import { Lead, LeadStatus, TemperatureStatus, CreateLeadPayload, UpdateLeadPayload } from '../types/lead';
@@ -39,6 +42,12 @@ export const LeadsPage: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
+
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkStatusValue, setBulkStatusValue] = useState<LeadStatus | ''>('');
+  const [bulkTempValue, setBulkTempValue] = useState<TemperatureStatus | ''>('');
+  const [isBulkDeleteConfirm, setIsBulkDeleteConfirm] = useState(false);
 
   // Fetch leads with TanStack Query
   const { data, isLoading, isError, refetch } = useQuery({
@@ -93,6 +102,36 @@ export const LeadsPage: React.FC = () => {
     },
   });
 
+  // Bulk Delete Mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => leadService.bulkDelete({ ids: Array.from(selectedIds) }),
+    onSuccess: (result) => {
+      toast.success(`${result.deleted} lead(s) deleted`);
+      setSelectedIds(new Set());
+      setIsBulkDeleteConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Bulk delete failed');
+    },
+  });
+
+  // Bulk Update Mutation
+  const bulkUpdateMutation = useMutation({
+    mutationFn: (data: { status?: LeadStatus; temperature?: TemperatureStatus }) =>
+      leadService.bulkUpdate({ ids: Array.from(selectedIds), data }),
+    onSuccess: (result) => {
+      toast.success(`${result.updated} lead(s) updated`);
+      setSelectedIds(new Set());
+      setBulkStatusValue('');
+      setBulkTempValue('');
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Bulk update failed');
+    },
+  });
+
   const handleCreateOrUpdate = async (formData: CreateLeadPayload) => {
     if (editingLead) {
       await updateMutation.mutateAsync({ id: editingLead.id, payload: formData });
@@ -104,6 +143,42 @@ export const LeadsPage: React.FC = () => {
 
   const leads = data?.leads || [];
   const pagination = data?.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 };
+
+  // Selection helpers
+  const allOnPageSelected = leads.length > 0 && leads.every((l) => selectedIds.has(l.id));
+  const someOnPageSelected = leads.some((l) => selectedIds.has(l.id)) && !allOnPageSelected;
+
+  const toggleSelectAll = () => {
+    if (allOnPageSelected) {
+      const next = new Set(selectedIds);
+      leads.forEach((l) => next.delete(l.id));
+      setSelectedIds(next);
+    } else {
+      const next = new Set(selectedIds);
+      leads.forEach((l) => next.add(l.id));
+      setSelectedIds(next);
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleBulkUpdate = () => {
+    if (!bulkStatusValue && !bulkTempValue) {
+      toast.error('Please select a Status or Temperature to apply');
+      return;
+    }
+    const data: { status?: LeadStatus; temperature?: TemperatureStatus } = {};
+    if (bulkStatusValue) data.status = bulkStatusValue as LeadStatus;
+    if (bulkTempValue) data.temperature = bulkTempValue as TemperatureStatus;
+    bulkUpdateMutation.mutate(data);
+  };
+
+  const colSpan = 11; // total columns including checkbox and google profile
 
   return (
     <motion.div
@@ -217,16 +292,128 @@ export const LeadsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Bulk Action Toolbar */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -8, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-wrap items-center gap-3 p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-sm">
+              <span className="font-semibold text-indigo-300 text-xs flex items-center gap-1.5">
+                <CheckSquare className="w-4 h-4" />
+                {selectedIds.size} selected
+              </span>
+
+              <div className="h-4 w-px bg-border" />
+
+              {/* Bulk Status Update */}
+              <select
+                value={bulkStatusValue}
+                onChange={(e) => setBulkStatusValue(e.target.value as LeadStatus | '')}
+                className="bg-background border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Set Status…</option>
+                <option value="NEW">NEW</option>
+                <option value="RESEARCHED">RESEARCHED</option>
+                <option value="QUALIFIED">QUALIFIED</option>
+                <option value="PENDING_APPROVAL">PENDING APPROVAL</option>
+                <option value="CONTACTED">CONTACTED</option>
+                <option value="REPLIED">REPLIED</option>
+                <option value="INTERESTED">INTERESTED</option>
+                <option value="CONVERTED">CONVERTED</option>
+                <option value="DISQUALIFIED">DISQUALIFIED</option>
+              </select>
+
+              {/* Bulk Temp Update */}
+              <select
+                value={bulkTempValue}
+                onChange={(e) => setBulkTempValue(e.target.value as TemperatureStatus | '')}
+                className="bg-background border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Set Temperature…</option>
+                <option value="HOT">HOT</option>
+                <option value="WARM">WARM</option>
+                <option value="LOW">LOW</option>
+              </select>
+
+              <button
+                onClick={handleBulkUpdate}
+                disabled={bulkUpdateMutation.isPending}
+                className="px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors disabled:opacity-50"
+              >
+                {bulkUpdateMutation.isPending ? 'Updating…' : 'Apply Update'}
+              </button>
+
+              <div className="h-4 w-px bg-border" />
+
+              {/* Bulk Delete */}
+              {!isBulkDeleteConfirm ? (
+                <button
+                  onClick={() => setIsBulkDeleteConfirm(true)}
+                  className="px-3 py-1.5 rounded-md bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete {selectedIds.size} leads
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-rose-400 font-medium">Confirm delete?</span>
+                  <button
+                    onClick={() => bulkDeleteMutation.mutate()}
+                    disabled={bulkDeleteMutation.isPending}
+                    className="px-3 py-1.5 rounded-md bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {bulkDeleteMutation.isPending ? 'Deleting…' : 'Yes, Delete'}
+                  </button>
+                  <button
+                    onClick={() => setIsBulkDeleteConfirm(false)}
+                    className="px-3 py-1.5 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              <div className="ml-auto">
+                <button
+                  onClick={() => { setSelectedIds(new Set()); setIsBulkDeleteConfirm(false); }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clear selection
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Data Table Container */}
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-muted-foreground font-semibold uppercase tracking-wider text-[10px]">
+                {/* Select All Checkbox */}
+                <th className="py-3 px-4 w-10">
+                  <button onClick={toggleSelectAll} className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                    {allOnPageSelected ? (
+                      <CheckSquare className="w-4 h-4 text-indigo-400" />
+                    ) : someOnPageSelected ? (
+                      <Minus className="w-4 h-4 text-indigo-400" />
+                    ) : (
+                      <Square className="w-4 h-4" />
+                    )}
+                  </button>
+                </th>
                 <th className="py-3 px-4">Business</th>
                 <th className="py-3 px-4">Category</th>
                 <th className="py-3 px-4">City</th>
                 <th className="py-3 px-4">Website</th>
+                <th className="py-3 px-4">Profile</th>
                 <th className="py-3 px-4">Score</th>
                 <th className="py-3 px-4">Temp</th>
                 <th className="py-3 px-4">Status</th>
@@ -239,6 +426,7 @@ export const LeadsPage: React.FC = () => {
                 // Skeleton Rows
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
+                    <td className="py-4 px-4"><div className="h-4 bg-muted rounded w-4" /></td>
                     <td className="py-4 px-4">
                       <div className="h-4 bg-muted rounded w-32 mb-1"></div>
                       <div className="h-3 bg-muted rounded w-20"></div>
@@ -246,6 +434,7 @@ export const LeadsPage: React.FC = () => {
                     <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-16"></div></td>
                     <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-16"></div></td>
                     <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-24"></div></td>
+                    <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-10"></div></td>
                     <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-8"></div></td>
                     <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-12"></div></td>
                     <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-16"></div></td>
@@ -253,10 +442,16 @@ export const LeadsPage: React.FC = () => {
                     <td className="py-4 px-4 text-right"><div className="h-4 bg-muted rounded w-12 ml-auto"></div></td>
                   </tr>
                 ))
+              ) : isError ? (
+                <tr>
+                  <td colSpan={colSpan} className="py-12 px-4 text-center text-rose-400 text-xs">
+                    Failed to load leads. Please try refreshing.
+                  </td>
+                </tr>
               ) : leads.length === 0 ? (
                 // Empty State
                 <tr>
-                  <td colSpan={9} className="py-12 px-4 text-center">
+                  <td colSpan={colSpan} className="py-12 px-4 text-center">
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
                       <Building2 className="w-8 h-8 text-muted-foreground/50" />
                       <p className="font-semibold text-sm text-foreground">No leads found</p>
@@ -270,8 +465,22 @@ export const LeadsPage: React.FC = () => {
                 leads.map((lead) => (
                   <tr
                     key={lead.id}
-                    className="hover:bg-accent/40 transition-colors group"
+                    className={`hover:bg-accent/40 transition-colors group ${selectedIds.has(lead.id) ? 'bg-indigo-500/5' : ''}`}
                   >
+                    {/* Checkbox */}
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => toggleSelect(lead.id)}
+                        className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {selectedIds.has(lead.id) ? (
+                          <CheckSquare className="w-4 h-4 text-indigo-400" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </button>
+                    </td>
+
                     {/* Business */}
                     <td className="py-3 px-4 font-medium text-foreground">
                       <Link to={`/leads/${lead.id}`} className="hover:underline font-semibold text-foreground">
@@ -305,6 +514,24 @@ export const LeadsPage: React.FC = () => {
                         </a>
                       ) : (
                         <WebsiteStatusBadge status={lead.websiteStatus} />
+                      )}
+                    </td>
+
+                    {/* Google Profile */}
+                    <td className="py-3 px-4">
+                      {lead.googleProfileLink ? (
+                        <a
+                          href={lead.googleProfileLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Open Google Business Profile"
+                          className="inline-flex items-center gap-1 text-green-500 hover:text-green-400 hover:underline text-[11px]"
+                        >
+                          <MapPin className="w-3 h-3" />
+                          Maps
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground/40 text-[11px]">—</span>
                       )}
                     </td>
 
@@ -367,6 +594,9 @@ export const LeadsPage: React.FC = () => {
           <span className="text-muted-foreground">
             Showing <span className="font-semibold text-foreground">{leads.length}</span> of{' '}
             <span className="font-semibold text-foreground">{pagination.total}</span> leads
+            {selectedIds.size > 0 && (
+              <span className="ml-2 text-indigo-400 font-medium">· {selectedIds.size} selected</span>
+            )}
           </span>
 
           <div className="flex items-center gap-3">

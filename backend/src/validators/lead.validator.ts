@@ -16,6 +16,21 @@ export const createLeadSchema = z.object({
   temperature: z.enum(TEMPERATURE_VALUES).optional().default('LOW'),
   status: z.enum(LEAD_STATUS_VALUES).optional().default('NEW'),
   source: z.string().optional().default('MANUAL'),
+  googleProfileLink: z.string().url('Invalid URL format').optional().or(z.literal('')).or(z.null()),
+});
+
+export const bulkDeleteSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1, 'At least one ID is required'),
+});
+
+export const bulkUpdateSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1, 'At least one ID is required'),
+  data: z.object({
+    status: z.enum(LEAD_STATUS_VALUES).optional(),
+    temperature: z.enum(TEMPERATURE_VALUES).optional(),
+    category: z.string().optional(),
+    city: z.string().optional(),
+  }).refine((d) => Object.keys(d).length > 0, { message: 'At least one field to update is required' }),
 });
 
 export const updateLeadSchema = createLeadSchema.partial();
@@ -33,3 +48,5 @@ export const leadQuerySchema = z.object({
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type LeadQueryInput = z.infer<typeof leadQuerySchema>;
+export type BulkDeleteInput = z.infer<typeof bulkDeleteSchema>;
+export type BulkUpdateInput = z.infer<typeof bulkUpdateSchema>;

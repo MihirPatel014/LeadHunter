@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { LeadService } from '../services/lead.service.js';
-import { createLeadSchema, updateLeadSchema, leadQuerySchema } from '../validators/lead.validator.js';
+import { createLeadSchema, updateLeadSchema, leadQuerySchema, bulkDeleteSchema, bulkUpdateSchema } from '../validators/lead.validator.js';
 
 const leadService = new LeadService();
 
@@ -79,6 +79,34 @@ export class LeadController {
       res.status(200).json({
         success: true,
         message: 'Lead deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async bulkDelete(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const validated = bulkDeleteSchema.parse(req.body);
+      const result = await leadService.bulkDelete(validated.ids);
+      res.status(200).json({
+        success: true,
+        message: `${result.deleted} lead(s) deleted successfully`,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async bulkUpdate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const validated = bulkUpdateSchema.parse(req.body);
+      const result = await leadService.bulkUpdate(validated);
+      res.status(200).json({
+        success: true,
+        message: `${result.updated} lead(s) updated successfully`,
+        data: result,
       });
     } catch (error) {
       next(error);

@@ -40,6 +40,9 @@ export class SerpApiProvider implements LeadDiscoveryProvider {
       rating: typeof r.rating === 'number' ? r.rating : undefined,
       reviewCount: typeof r.reviews === 'number' ? r.reviews : undefined,
       source: 'SERPAPI',
+      googleProfileLink: r.place_id
+        ? `https://www.google.com/maps/place/?q=place_id:${r.place_id}`
+        : (r.links?.website ? undefined : undefined),
     }));
   }
 }

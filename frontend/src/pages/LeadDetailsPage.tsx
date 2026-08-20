@@ -241,6 +241,22 @@ export const LeadDetailsPage: React.FC = () => {
                 <WebsiteStatusBadge status={lead.websiteStatus} />
               </div>
             </div>
+            <div>
+              <span className="text-muted-foreground block text-[11px]">Google Business Profile</span>
+              {lead.googleProfileLink ? (
+                <a
+                  href={lead.googleProfileLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-green-500 hover:text-green-400 hover:underline font-mono inline-flex items-center gap-1 mt-1"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  View on Google Maps <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <span className="text-muted-foreground italic">No Google profile link</span>
+              )}
+            </div>
           </div>
         </div>
       </div>

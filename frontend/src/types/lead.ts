@@ -29,6 +29,7 @@ export interface Lead {
   temperature: TemperatureStatus;
   status: LeadStatus;
   source: string;
+  googleProfileLink: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -68,6 +69,21 @@ export interface CreateLeadPayload {
   temperature?: TemperatureStatus;
   status?: LeadStatus;
   source?: string;
+  googleProfileLink?: string;
 }
 
 export type UpdateLeadPayload = Partial<CreateLeadPayload>;
+
+export interface BulkDeletePayload {
+  ids: number[];
+}
+
+export interface BulkUpdatePayload {
+  ids: number[];
+  data: {
+    status?: LeadStatus;
+    temperature?: TemperatureStatus;
+    category?: string;
+    city?: string;
+  };
+}

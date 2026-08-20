@@ -1,6 +1,6 @@
 import { Lead } from '@prisma/client';
 import { LeadRepository } from '../repositories/lead.repository.js';
-import { CreateLeadInput, UpdateLeadInput, LeadQueryInput } from '../validators/lead.validator.js';
+import { CreateLeadInput, UpdateLeadInput, LeadQueryInput, BulkUpdateInput } from '../validators/lead.validator.js';
 import { PaginatedResult } from '../types/lead.types.js';
 
 export class LeadService {
@@ -48,5 +48,15 @@ export class LeadService {
   async deleteLead(id: number): Promise<void> {
     await this.getLeadById(id); // Ensure exists
     await this.repository.delete(id);
+  }
+
+  async bulkDelete(ids: number[]): Promise<{ deleted: number }> {
+    const count = await this.repository.bulkDelete(ids);
+    return { deleted: count };
+  }
+
+  async bulkUpdate(input: BulkUpdateInput): Promise<{ updated: number }> {
+    const count = await this.repository.bulkUpdate(input.ids, input.data);
+    return { updated: count };
   }
 }

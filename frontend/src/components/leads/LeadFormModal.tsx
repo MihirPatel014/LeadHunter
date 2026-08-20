@@ -30,6 +30,7 @@ const leadFormSchema = z.object({
     'DISQUALIFIED',
   ]).default('NEW'),
   source: z.string().default('MANUAL'),
+  googleProfileLink: z.string().optional(),
 });
 
 type LeadFormData = z.infer<typeof leadFormSchema>;
@@ -71,6 +72,7 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
       temperature: 'LOW',
       status: 'NEW',
       source: 'MANUAL',
+      googleProfileLink: '',
     },
   });
 
@@ -91,6 +93,7 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
         temperature: initialData.temperature,
         status: initialData.status,
         source: initialData.source || 'MANUAL',
+        googleProfileLink: initialData.googleProfileLink || '',
       });
     } else {
       reset({
@@ -108,6 +111,7 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
         temperature: 'LOW',
         status: 'NEW',
         source: 'MANUAL',
+        googleProfileLink: '',
       });
     }
   }, [initialData, reset, isOpen]);
@@ -229,6 +233,16 @@ export const LeadFormModal: React.FC<LeadFormModalProps> = ({
                 <option value="INVALID">INVALID</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1">Google Profile Link</label>
+            <input
+              type="text"
+              {...register('googleProfileLink')}
+              placeholder="https://www.google.com/maps/place/..."
+              className="w-full bg-background border border-border rounded-md px-3 py-2 text-xs focus:ring-1 focus:ring-primary focus:border-primary text-foreground"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

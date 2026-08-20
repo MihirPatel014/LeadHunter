@@ -51,6 +51,7 @@ export class DiscoveryService {
           rating: result.rating ?? null,
           reviewCount: result.reviewCount ?? null,
           source: result.source,
+          googleProfileLink: result.googleProfileLink ?? null,
           websiteStatus: 'UNKNOWN',
           score: 0,
           temperature: 'LOW',

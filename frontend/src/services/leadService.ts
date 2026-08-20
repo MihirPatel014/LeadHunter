@@ -1,5 +1,5 @@
 import { fetchApi } from './api';
-import { Lead, LeadQueryParams, PaginatedLeadsResponse, CreateLeadPayload, UpdateLeadPayload } from '../types/lead';
+import { Lead, LeadQueryParams, PaginatedLeadsResponse, CreateLeadPayload, UpdateLeadPayload, BulkDeletePayload, BulkUpdatePayload } from '../types/lead';
 
 export const leadService = {
   getLeads: async (params: LeadQueryParams = {}): Promise<PaginatedLeadsResponse> => {
@@ -41,5 +41,21 @@ export const leadService = {
     await fetchApi(`/api/leads/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  bulkDelete: async (payload: BulkDeletePayload): Promise<{ deleted: number }> => {
+    const res = await fetchApi<{ deleted: number }>('/api/leads/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return res.data!;
+  },
+
+  bulkUpdate: async (payload: BulkUpdatePayload): Promise<{ updated: number }> => {
+    const res = await fetchApi<{ updated: number }>('/api/leads/bulk-update', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+    return res.data!;
   },
 };

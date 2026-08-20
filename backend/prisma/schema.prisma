@@ -22,7 +22,8 @@ model Lead {
   score         Int      @default(0)
   temperature   String   @default("LOW")
   status        String   @default("NEW")
-  source        String   @default("MANUAL")
+  source             String   @default("MANUAL")
+  googleProfileLink  String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

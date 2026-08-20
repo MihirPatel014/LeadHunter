@@ -8,6 +8,7 @@ export interface DiscoveryResult {
   rating?: number;
   reviewCount?: number;
   source: string;
+  googleProfileLink?: string;
 }
 
 export interface LeadDiscoveryProvider {
