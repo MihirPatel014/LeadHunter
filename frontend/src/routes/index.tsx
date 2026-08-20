@@ -5,6 +5,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { LeadsPage } from '../pages/LeadsPage';
 import { LeadDetailsPage } from '../pages/LeadDetailsPage';
 import { DiscoveryPage } from '../pages/DiscoveryPage';
+import { SettingsPage } from '../pages/SettingsPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -80,12 +81,7 @@ export const AppRoutes: React.FC = () => {
         />
         <Route
           path="settings"
-          element={
-            <PlaceholderPage
-              title="Settings"
-              description="Customize user profile, sender information, and lead scoring rules."
-            />
-          }
+          element={<SettingsPage />}
         />
         <Route
           path="*"

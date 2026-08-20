@@ -9,10 +9,11 @@ export class SerpApiProvider implements LeadDiscoveryProvider {
   }
 
   async search(city: string, category: string, limit: number): Promise<DiscoveryResult[]> {
-    const query = `${category} in ${city}`;
+    const query = category;
     const url = new URL(this.baseUrl);
     url.searchParams.set('engine', 'google_local');
     url.searchParams.set('q', query);
+    url.searchParams.set('location', city);
     url.searchParams.set('hl', 'en');
     url.searchParams.set('api_key', this.apiKey);
 

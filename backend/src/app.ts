@@ -6,6 +6,8 @@ import { config } from './config/env.js';
 import healthRoutes from './routes/health.routes.js';
 import leadRoutes from './routes/lead.routes.js';
 import discoveryRoutes from './routes/discovery.routes.js';
+import integrationsRoutes from './routes/integrations.routes.js';
+import docsRoutes from './routes/docs.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -18,6 +20,10 @@ app.use(express.json());
 app.use('/api', healthRoutes);
 app.use('/api', leadRoutes);
 app.use('/api', discoveryRoutes);
+app.use('/api', integrationsRoutes);
+
+// API documentation (ReDoc) — no /api prefix so it's accessible at /api-docs
+app.use(docsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
