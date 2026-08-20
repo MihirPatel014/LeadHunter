@@ -4,6 +4,7 @@ import { MainLayout } from '../layouts/MainLayout';
 import { DashboardPage } from '../pages/DashboardPage';
 import { LeadsPage } from '../pages/LeadsPage';
 import { LeadDetailsPage } from '../pages/LeadDetailsPage';
+import { DiscoveryPage } from '../pages/DiscoveryPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -13,15 +14,7 @@ export const AppRoutes: React.FC = () => {
         <Route index element={<DashboardPage />} />
         <Route path="leads" element={<LeadsPage />} />
         <Route path="leads/:id" element={<LeadDetailsPage />} />
-        <Route
-          path="discovery"
-          element={
-            <PlaceholderPage
-              title="Lead Discovery"
-              description="Search for local business leads by city and category using SerpAPI."
-            />
-          }
-        />
+        <Route path="discovery" element={<DiscoveryPage />} />
         <Route
           path="templates"
           element={
