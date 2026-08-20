@@ -2,6 +2,8 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { DashboardPage } from '../pages/DashboardPage';
+import { LeadsPage } from '../pages/LeadsPage';
+import { LeadDetailsPage } from '../pages/LeadDetailsPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -9,15 +11,8 @@ export const AppRoutes: React.FC = () => {
     <Routes>
       <Route path="/" element={<MainLayout />}>
         <Route index element={<DashboardPage />} />
-        <Route
-          path="leads"
-          element={
-            <PlaceholderPage
-              title="Leads Management"
-              description="Manage, score, filter, and inspect discovered leads."
-            />
-          }
-        />
+        <Route path="leads" element={<LeadsPage />} />
+        <Route path="leads/:id" element={<LeadDetailsPage />} />
         <Route
           path="discovery"
           element={
