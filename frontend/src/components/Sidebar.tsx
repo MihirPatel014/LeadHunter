@@ -38,22 +38,22 @@ const secondaryItems = [
 
 export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
   return (
-    <aside className="w-64 bg-card border-r border-border/50 flex flex-col h-full select-none">
+    <aside className="w-64 bg-card border-r border-border flex flex-col h-full select-none transition-colors">
       {/* Brand Header */}
-      <div className="p-6 flex items-center gap-3 border-b border-border/40">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 ring-1 ring-white/20">
-          <Sparkles className="w-5 h-5 text-white" />
+      <div className="p-5 flex items-center gap-3 border-b border-border">
+        <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shadow-sm">
+          <Sparkles className="w-4 h-4" />
         </div>
         <div>
-          <h1 className="font-bold text-lg tracking-tight text-white flex items-center gap-1.5">
-            LeadHunter <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">AI</span>
+          <h1 className="font-semibold text-sm tracking-tight text-foreground flex items-center gap-1.5 font-display">
+            LeadHunter <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">AI</span>
           </h1>
-          <p className="text-xs text-muted-foreground">Outreach Engine</p>
+          <p className="text-xs text-muted-foreground">Outreach Platform</p>
         </div>
       </div>
 
       {/* Primary Navigation */}
-      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
         <div>
           <p className="px-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Main Menu
@@ -67,10 +67,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                   to={item.path}
                   onClick={onCloseMobile}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                    `flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                       isActive
-                        ? 'bg-indigo-600/15 text-indigo-400 font-semibold border border-indigo-500/30 shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
+                        ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                     }`
                   }
                 >
@@ -95,10 +95,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                   to={item.path}
                   onClick={onCloseMobile}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                    `flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                       isActive
-                        ? 'bg-indigo-600/15 text-indigo-400 font-semibold border border-indigo-500/30 shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
+                        ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                     }`
                   }
                 >
@@ -111,17 +111,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
         </div>
       </div>
 
-      {/* Footer status indicator */}
-      <div className="p-4 border-t border-border/40 bg-secondary/20">
-        <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-card/60 border border-border/30 text-xs">
+      {/* Footer Status */}
+      <div className="p-4 border-t border-border bg-background/50">
+        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-card border border-border text-xs">
           <span className="flex items-center gap-2 text-muted-foreground">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            API Connected
+            System Ready
           </span>
-          <span className="text-[10px] text-muted-foreground font-mono">v1.0.0</span>
+          <span className="text-[10px] text-muted-foreground font-mono">v1.0</span>
         </div>
       </div>
     </aside>
