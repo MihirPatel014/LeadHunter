@@ -22,6 +22,26 @@ export interface BulkValidationResponse {
   results: Array<{ leadId: number; businessName: string; status: WebsiteStatus }>;
 }
 
+export interface ScoringReason {
+  rule: string;
+  points: number;
+}
+
+export interface ScoringResponse {
+  lead: Lead;
+  score: number;
+  temperature: TemperatureStatus;
+  reasons: ScoringReason[];
+}
+
+export interface BulkScoringResponse {
+  total: number;
+  hot: number;
+  warm: number;
+  low: number;
+  results: Array<{ leadId: number; businessName: string; score: number; temperature: TemperatureStatus; reasons: ScoringReason[] }>;
+}
+
 export const leadService = {
   getLeads: async (params: LeadQueryParams = {}): Promise<PaginatedLeadsResponse> => {
     const query = new URLSearchParams();
@@ -73,6 +93,26 @@ export const leadService = {
 
   bulkValidateLeads: async (leadIds?: number[]): Promise<BulkValidationResponse> => {
     const res = await fetchApi<BulkValidationResponse>('/api/leads/validate', {
+      method: 'POST',
+      body: JSON.stringify({ leadIds }),
+    });
+    return res.data!;
+  },
+
+  scoreLead: async (id: number): Promise<ScoringResponse> => {
+    const res = await fetchApi<ScoringResponse>(`/api/leads/${id}/score`, {
+      method: 'POST',
+    });
+    return res.data!;
+  },
+
+  getScoringBreakdown: async (id: number): Promise<{ score: number; temperature: TemperatureStatus; reasons: ScoringReason[] }> => {
+    const res = await fetchApi<{ score: number; temperature: TemperatureStatus; reasons: ScoringReason[] }>(`/api/leads/${id}/score`);
+    return res.data!;
+  },
+
+  bulkScoreLeads: async (leadIds?: number[]): Promise<BulkScoringResponse> => {
+    const res = await fetchApi<BulkScoringResponse>('/api/leads/score', {
       method: 'POST',
       body: JSON.stringify({ leadIds }),
     });

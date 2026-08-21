@@ -17,6 +17,7 @@ import {
   Minus,
   MapPin,
   Shield,
+  Sparkles,
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
@@ -145,6 +146,18 @@ export const LeadsPage: React.FC = () => {
     },
   });
 
+  // Bulk Score Mutation
+  const bulkScoreMutation = useMutation({
+    mutationFn: (leadIds?: number[]) => leadService.bulkScoreLeads(leadIds),
+    onSuccess: (data) => {
+      toast.success(`Scoring complete: ${data.hot} HOT, ${data.warm} WARM, ${data.low} LOW`);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Bulk scoring failed');
+    },
+  });
+
   const handleCreateOrUpdate = async (formData: CreateLeadPayload) => {
     if (editingLead) {
       await updateMutation.mutateAsync({ id: editingLead.id, payload: formData });
@@ -214,6 +227,15 @@ export const LeadsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => bulkScoreMutation.mutate(undefined)}
+            disabled={bulkScoreMutation.isPending || leads.length === 0}
+            className="px-3 py-2 rounded-md border border-border bg-card text-foreground hover:bg-secondary text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            title="Recalculate score and temperature for all leads"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            {bulkScoreMutation.isPending ? 'Scoring...' : 'Score Leads'}
+          </button>
           <button
             onClick={() => bulkValidateMutation.mutate(undefined)}
             disabled={bulkValidateMutation.isPending || leads.length === 0}

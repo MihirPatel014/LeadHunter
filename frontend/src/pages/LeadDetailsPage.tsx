@@ -42,6 +42,25 @@ export const LeadDetailsPage: React.FC = () => {
     enabled: !isNaN(leadId) && leadId > 0,
   });
 
+  const { data: scoringData, refetch: refetchScoring } = useQuery({
+    queryKey: ['lead-scoring', leadId],
+    queryFn: () => leadService.getScoringBreakdown(leadId),
+    enabled: !isNaN(leadId) && leadId > 0,
+  });
+
+  const scoreMutation = useMutation({
+    mutationFn: () => leadService.scoreLead(leadId),
+    onSuccess: (data) => {
+      toast.success(`Score recalculated: ${data.score}/100 (${data.temperature})`);
+      queryClient.invalidateQueries({ queryKey: ['lead', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['lead-scoring', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Scoring failed');
+    },
+  });
+
   const validateMutation = useMutation({
     mutationFn: () => leadService.validateLead(leadId),
     onSuccess: (data) => {
@@ -125,6 +144,15 @@ export const LeadDetailsPage: React.FC = () => {
         </Link>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => scoreMutation.mutate()}
+            disabled={scoreMutation.isPending}
+            className="px-3 py-1.5 rounded-md border border-border bg-card text-foreground hover:bg-secondary text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            title="Recalculate lead score and temperature"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            {scoreMutation.isPending ? 'Scoring...' : 'Recalculate Score'}
+          </button>
           <button
             onClick={() => validateMutation.mutate()}
             disabled={validateMutation.isPending}
@@ -280,6 +308,41 @@ export const LeadDetailsPage: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Score Breakdown Reasons Card */}
+      <div className="p-6 rounded-xl bg-card border border-border space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <h2 className="text-sm font-semibold text-foreground font-display flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-500" /> Scoring Breakdown & Reasons
+          </h2>
+          <span className="font-mono text-xs font-bold text-foreground bg-secondary px-2.5 py-1 rounded-md border border-border">
+            {lead.score} / 100 ({lead.temperature})
+          </span>
+        </div>
+
+        {scoringData?.reasons && scoringData.reasons.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-[11px] text-muted-foreground font-medium mb-2">Scoring rule evaluation details:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {scoringData.reasons.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-2.5 rounded-lg bg-background border border-border text-xs"
+                >
+                  <span className="text-foreground font-medium">{item.rule}</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded text-[11px]">
+                    +{item.points}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground italic py-2">
+            No specific scoring bonuses applied. Click "Recalculate Score" above to evaluate scoring rules.
+          </div>
+        )}
       </div>
 
       {/* Activity Timeline Card */}
