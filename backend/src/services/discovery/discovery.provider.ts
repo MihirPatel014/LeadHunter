@@ -4,11 +4,12 @@ export interface DiscoveryResult {
   city?: string;
   address?: string;
   website?: string;
+  mapsUrl?: string;
   phone?: string;
   rating?: number;
   reviewCount?: number;
   source: string;
-  googleProfileLink?: string;
+  raw?: any;
 }
 
 export interface LeadDiscoveryProvider {

@@ -7,6 +7,7 @@ export const createLeadSchema = z.object({
   city: z.string().optional(),
   address: z.string().optional(),
   website: z.string().url('Invalid URL format').optional().or(z.literal('')),
+  mapsUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
   phone: z.string().optional(),
   email: z.string().email('Invalid email format').optional().or(z.literal('')),
   rating: z.number().min(0).max(5).optional(),

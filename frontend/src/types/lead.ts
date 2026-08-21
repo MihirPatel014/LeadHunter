@@ -20,6 +20,7 @@ export interface Lead {
   city: string | null;
   address: string | null;
   website: string | null;
+  mapsUrl?: string | null;
   phone: string | null;
   email: string | null;
   rating: number | null;

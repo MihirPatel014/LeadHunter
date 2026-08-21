@@ -14,6 +14,7 @@ model Lead {
   city          String?
   address       String?
   website       String?
+  mapsUrl       String?
   phone         String?
   email         String?
   rating        Float?
@@ -22,8 +23,7 @@ model Lead {
   score         Int      @default(0)
   temperature   String   @default("LOW")
   status        String   @default("NEW")
-  source             String   @default("MANUAL")
-  googleProfileLink  String?
+  source        String   @default("MANUAL")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

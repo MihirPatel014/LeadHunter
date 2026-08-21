@@ -561,21 +561,19 @@ export const LeadsPage: React.FC = () => {
                       )}
                     </td>
 
-                    {/* Google Profile */}
+                    {/* Google Profile / Maps */}
                     <td className="py-3 px-4">
-                      {lead.googleProfileLink ? (
+                      {lead.mapsUrl ? (
                         <a
-                          href={lead.googleProfileLink}
+                          href={lead.mapsUrl}
                           target="_blank"
                           rel="noreferrer"
-                          title="Open Google Business Profile"
-                          className="inline-flex items-center gap-1 text-green-500 hover:text-green-400 hover:underline text-[11px]"
+                          className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline font-medium text-[11px]"
                         >
-                          <MapPin className="w-3 h-3" />
-                          Maps
+                          <MapPin className="w-3 h-3" /> Maps
                         </a>
                       ) : (
-                        <span className="text-muted-foreground/40 text-[11px]">—</span>
+                        <span className="text-muted-foreground text-[11px]">-</span>
                       )}
                     </td>
 

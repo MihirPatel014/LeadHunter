@@ -6,6 +6,7 @@ export interface DiscoverySummary {
   discovered: number;
   newLeads: number;
   duplicates: number;
+  items: DiscoveryResult[];
 }
 
 export class DiscoveryService {
@@ -37,6 +38,13 @@ export class DiscoveryService {
 
       if (existing) {
         duplicates++;
+        // Update mapsUrl if previously missing
+        if (result.mapsUrl && !existing.mapsUrl) {
+          await prisma.lead.update({
+            where: { id: existing.id },
+            data: { mapsUrl: result.mapsUrl },
+          });
+        }
         continue;
       }
 
@@ -47,12 +55,12 @@ export class DiscoveryService {
           city: result.city ?? null,
           address: result.address ?? null,
           website: result.website ?? null,
+          mapsUrl: result.mapsUrl ?? null,
           phone: result.phone ?? null,
           rating: result.rating ?? null,
           reviewCount: result.reviewCount ?? null,
           source: result.source,
-          googleProfileLink: result.googleProfileLink ?? null,
-          websiteStatus: 'UNKNOWN',
+          websiteStatus: result.website ? 'UNKNOWN' : 'INVALID',
           score: 0,
           temperature: 'LOW',
           status: 'NEW',
@@ -66,6 +74,7 @@ export class DiscoveryService {
       discovered: results.length,
       newLeads,
       duplicates,
+      items: results,
     };
   }
 }

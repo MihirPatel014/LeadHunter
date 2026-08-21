@@ -6,10 +6,25 @@ export interface DiscoverySearchPayload {
   limit?: number;
 }
 
+export interface DiscoveryItem {
+  businessName: string;
+  category?: string;
+  city?: string;
+  address?: string;
+  website?: string;
+  mapsUrl?: string;
+  phone?: string;
+  rating?: number;
+  reviewCount?: number;
+  source: string;
+  raw?: any;
+}
+
 export interface DiscoverySummary {
   discovered: number;
   newLeads: number;
   duplicates: number;
+  items: DiscoveryItem[];
 }
 
 export const discoveryService = {
