@@ -79,3 +79,130 @@ h1, h2, h3, .font-display {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(150, 150, 150, 0.4);
 }
+
+/* =========================================================
+   react-country-state-city Complete Double-Border & Menu Fix
+   ========================================================= */
+
+/* Outer container */
+.stdropdown-container {
+  position: relative !important;
+  background-color: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 0.375rem !important; /* rounded-md */
+  color: hsl(var(--foreground)) !important;
+  font-size: 0.75rem !important; /* text-xs */
+  height: 38px !important;
+  min-height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.stdropdown-container:focus-within,
+.stdropdown-container:hover {
+  border-color: hsl(var(--primary)) !important;
+}
+
+/* Remove double borders on inner wrappers and inputs */
+.stdropdown-input,
+.stdropdown-input.stsearch-box {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 10px !important;
+  width: 100% !important;
+  height: 100% !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.stsearch-box input,
+.stdropdown-input input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: hsl(var(--foreground)) !important;
+  font-size: 0.75rem !important;
+  line-height: 36px !important;
+  height: 36px !important;
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-family: inherit !important;
+  box-sizing: border-box !important;
+}
+
+/* Input placeholder text */
+.stdropdown-input input::placeholder,
+.stsearch-box input::placeholder {
+  color: hsl(var(--muted-foreground)) !important;
+  opacity: 1 !important;
+  line-height: 36px !important;
+}
+
+/* Dropdown Menu - MUST position strictly below the input container */
+.stdropdown-menu {
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  margin-top: 4px !important;
+  transform: none !important;
+  background-color: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 0.5rem !important;
+  max-height: 200px !important;
+  overflow-y: auto !important;
+  z-index: 9999 !important;
+  padding: 4px !important;
+}
+
+/* Menu items */
+.stdropdown-item {
+  color: hsl(var(--foreground)) !important;
+  font-size: 0.75rem !important;
+  padding: 8px 12px !important;
+  border-radius: 0.375rem !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.stdropdown-item:hover {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.stdropdown-item.selected {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  font-weight: 600 !important;
+}
+
+/* Tools/Chevron Arrow */
+.stdropdown-tools {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding-left: 6px !important;
+  pointer-events: none !important;
+}
+
+.stdropdown-tool svg {
+  fill: hsl(var(--muted-foreground)) !important;
+  width: 14px !important;
+  height: 14px !important;
+}

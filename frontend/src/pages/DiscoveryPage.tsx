@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast, Toaster } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
@@ -16,11 +16,21 @@ import {
   Sparkles,
   Copy,
   ArrowRight,
+  Check,
+  ChevronDown,
 } from 'lucide-react';
 
 import { discoveryService, DiscoverySummary } from '../services/discoveryService';
 import { useBrowserNotifications } from '../hooks/useBrowserNotifications';
 import { Link } from 'react-router-dom';
+import { CountrySelect, StateSelect, CitySelect } from 'react-country-state-city';
+import 'react-country-state-city/dist/react-country-state-city.css';
+
+const SUGGESTED_CITIES = [
+  'Surat', 'Mumbai', 'Delhi', 'Bengaluru', 'Ahmedabad', 'Pune', 'Hyderabad',
+  'Chennai', 'Kolkata', 'Jaipur', 'Vadodara', 'Rajkot', 'Indore', 'Chandigarh',
+  'London', 'New York', 'San Francisco', 'Dubai', 'Singapore', 'Toronto', 'Sydney',
+];
 
 const SUGGESTED_CATEGORIES = [
   'salon', 'restaurant', 'gym', 'dental clinic', 'hotel', 'pharmacy',
@@ -32,9 +42,29 @@ export const DiscoveryPage: React.FC = () => {
   const { permission, requestPermission, sendNotification } = useBrowserNotifications();
 
   const [city, setCity] = useState('');
+  const [countryid, setCountryid] = useState<number>(0);
+  const [stateid, setStateid] = useState<number>(0);
+  const [isCityOpen, setIsCityOpen] = useState(false);
   const [category, setCategory] = useState('');
   const [limit, setLimit] = useState(50);
   const [result, setResult] = useState<DiscoverySummary | null>(null);
+
+  const cityRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cityRef.current && !cityRef.current.contains(event.target as Node)) {
+        setIsCityOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCities = SUGGESTED_CITIES.filter((c) =>
+    c.toLowerCase().includes(city.trim().toLowerCase())
+  );
 
   const mutation = useMutation({
     mutationFn: () => discoveryService.search({ city: city.trim(), category: category.trim(), limit }),
@@ -135,56 +165,113 @@ export const DiscoveryPage: React.FC = () => {
         <h2 className="text-sm font-semibold text-foreground font-display">Search Parameters</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* City + Category Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Country, State, City & Category Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-primary" /> Country
+              </label>
+              <CountrySelect
+                showFlag={false}
+                onChange={(e: any) => {
+                  setCountryid(e.id);
+                  setStateid(0);
+                }}
+                placeHolder="Select Country"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-primary" /> State
+              </label>
+              <StateSelect
+                countryid={countryid}
+                onChange={(e: any) => {
+                  setStateid(e.id);
+                }}
+                placeHolder="Select State"
+              />
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-primary" /> City
               </label>
-              <input
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Surat, Mumbai, London"
-                disabled={mutation.isPending}
-                className="w-full bg-background border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary focus:border-primary disabled:opacity-50"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-primary" /> Business Category
-              </label>
-              <input
-                type="text"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="e.g. salon, restaurant, gym"
-                disabled={mutation.isPending}
-                className="w-full bg-background border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary focus:border-primary disabled:opacity-50"
+              <CitySelect
+                countryid={countryid}
+                stateid={stateid}
+                onChange={(e: any) => {
+                  setCity(e.name);
+                }}
+                placeHolder="Select City"
               />
             </div>
           </div>
 
-          {/* Suggested Categories */}
-          <div className="space-y-2">
-            <p className="text-[11px] text-muted-foreground font-medium">Quick pick category:</p>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTED_CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  disabled={mutation.isPending}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors capitalize ${
-                    category === cat
-                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                      : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-secondary'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-primary" /> Business Category
+            </label>
+            <input
+              type="text"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="e.g. salon, restaurant, gym"
+              disabled={mutation.isPending}
+              className="w-full bg-background border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary focus:border-primary disabled:opacity-50"
+            />
+          </div>
+
+          {/* Suggested Cities & Categories */}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                <MapPin className="w-3 h-3 text-primary" /> Quick pick city:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {['Surat', 'Mumbai', 'Delhi', 'Bengaluru', 'Ahmedabad', 'Pune', 'London', 'Dubai', 'New York'].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      setCity(c);
+                      setIsCityOpen(false);
+                    }}
+                    disabled={mutation.isPending}
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors ${
+                      city.toLowerCase() === c.toLowerCase()
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                        : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                <Tag className="w-3 h-3 text-primary" /> Quick pick category:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTED_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategory(cat)}
+                    disabled={mutation.isPending}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors capitalize ${
+                      category === cat
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                        : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

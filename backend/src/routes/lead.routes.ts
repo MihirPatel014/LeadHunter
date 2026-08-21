@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { LeadController } from '../controllers/lead.controller.js';
+import { WebsiteValidatorController } from '../controllers/website-validator.controller.js';
 
 const router = Router();
 
-// Bulk operations (must be before /:id routes)
-router.post('/leads/bulk-delete', LeadController.bulkDelete);
-router.patch('/leads/bulk-update', LeadController.bulkUpdate);
+// Validation endpoints
+router.post('/leads/validate', WebsiteValidatorController.bulkValidateLeads);
+router.post('/leads/:id/validate', WebsiteValidatorController.validateSingleLead);
 
-// Single resource CRUD
+// Lead CRUD endpoints
 router.get('/leads', LeadController.getLeads);
 router.get('/leads/:id', LeadController.getLeadById);
 router.post('/leads', LeadController.createLead);

@@ -42,6 +42,18 @@ export const LeadDetailsPage: React.FC = () => {
     enabled: !isNaN(leadId) && leadId > 0,
   });
 
+  const validateMutation = useMutation({
+    mutationFn: () => leadService.validateLead(leadId),
+    onSuccess: (data) => {
+      toast.success(`Validation complete: Status is ${data.validation.status}`);
+      queryClient.invalidateQueries({ queryKey: ['lead', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Validation failed');
+    },
+  });
+
   const updateMutation = useMutation({
     mutationFn: (payload: CreateLeadPayload) => leadService.updateLead(leadId, payload),
     onSuccess: () => {
@@ -113,6 +125,15 @@ export const LeadDetailsPage: React.FC = () => {
         </Link>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => validateMutation.mutate()}
+            disabled={validateMutation.isPending}
+            className="px-3 py-1.5 rounded-md border border-border bg-card text-foreground hover:bg-secondary text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            title="Check DNS and HTTP reachability"
+          >
+            <Shield className="w-3.5 h-3.5 text-indigo-500" />
+            {validateMutation.isPending ? 'Validating...' : 'Validate Website'}
+          </button>
           <button
             onClick={() => setIsEditing(true)}
             className="px-3 py-1.5 rounded-md border border-border bg-card text-foreground hover:bg-secondary text-xs font-medium transition-colors flex items-center gap-1.5"

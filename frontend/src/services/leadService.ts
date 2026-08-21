@@ -1,5 +1,26 @@
 import { fetchApi } from './api';
-import { Lead, LeadQueryParams, PaginatedLeadsResponse, CreateLeadPayload, UpdateLeadPayload, BulkDeletePayload, BulkUpdatePayload } from '../types/lead';
+import { Lead, LeadQueryParams, PaginatedLeadsResponse, CreateLeadPayload, UpdateLeadPayload, WebsiteStatus, LeadStatus, TemperatureStatus } from '../types/lead';
+
+export interface ValidationResponse {
+  lead: Lead;
+  validation: {
+    url: string | null;
+    status: WebsiteStatus;
+    dnsReachable: boolean;
+    httpStatus?: number;
+    isHttps: boolean;
+    reachable: boolean;
+    error?: string;
+  };
+}
+
+export interface BulkValidationResponse {
+  total: number;
+  online: number;
+  offline: number;
+  invalid: number;
+  results: Array<{ leadId: number; businessName: string; status: WebsiteStatus }>;
+}
 
 export const leadService = {
   getLeads: async (params: LeadQueryParams = {}): Promise<PaginatedLeadsResponse> => {
@@ -43,19 +64,28 @@ export const leadService = {
     });
   },
 
-  bulkDelete: async (payload: BulkDeletePayload): Promise<{ deleted: number }> => {
-    const res = await fetchApi<{ deleted: number }>('/api/leads/bulk-delete', {
+  validateLead: async (id: number): Promise<ValidationResponse> => {
+    const res = await fetchApi<ValidationResponse>(`/api/leads/${id}/validate`, {
       method: 'POST',
-      body: JSON.stringify(payload),
     });
     return res.data!;
   },
 
-  bulkUpdate: async (payload: BulkUpdatePayload): Promise<{ updated: number }> => {
-    const res = await fetchApi<{ updated: number }>('/api/leads/bulk-update', {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
+  bulkValidateLeads: async (leadIds?: number[]): Promise<BulkValidationResponse> => {
+    const res = await fetchApi<BulkValidationResponse>('/api/leads/validate', {
+      method: 'POST',
+      body: JSON.stringify({ leadIds }),
     });
     return res.data!;
+  },
+
+  bulkDelete: async (payload: { ids: number[] }): Promise<{ deleted: number }> => {
+    const results = await Promise.all(payload.ids.map((id) => leadService.deleteLead(id)));
+    return { deleted: results.length };
+  },
+
+  bulkUpdate: async (payload: { ids: number[]; data: { status?: LeadStatus; temperature?: TemperatureStatus } }): Promise<{ updated: number }> => {
+    const results = await Promise.all(payload.ids.map((id) => leadService.updateLead(id, payload.data)));
+    return { updated: results.length };
   },
 };

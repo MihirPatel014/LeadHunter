@@ -16,6 +16,7 @@ import {
   Square,
   Minus,
   MapPin,
+  Shield,
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
@@ -132,6 +133,18 @@ export const LeadsPage: React.FC = () => {
     },
   });
 
+  // Bulk Validate Mutation
+  const bulkValidateMutation = useMutation({
+    mutationFn: (leadIds?: number[]) => leadService.bulkValidateLeads(leadIds),
+    onSuccess: (data) => {
+      toast.success(`Validation complete: ${data.online} Online, ${data.offline} Offline, ${data.invalid} Invalid`);
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Bulk validation failed');
+    },
+  });
+
   const handleCreateOrUpdate = async (formData: CreateLeadPayload) => {
     if (editingLead) {
       await updateMutation.mutateAsync({ id: editingLead.id, payload: formData });
@@ -201,6 +214,15 @@ export const LeadsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => bulkValidateMutation.mutate(undefined)}
+            disabled={bulkValidateMutation.isPending || leads.length === 0}
+            className="px-3 py-2 rounded-md border border-border bg-card text-foreground hover:bg-secondary text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            title="Perform DNS & HTTP validation for all leads"
+          >
+            <Shield className="w-3.5 h-3.5 text-indigo-500" />
+            {bulkValidateMutation.isPending ? 'Validating...' : 'Validate Websites'}
+          </button>
           <button
             onClick={() => refetch()}
             className="p-2 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"

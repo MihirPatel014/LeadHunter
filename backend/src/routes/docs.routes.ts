@@ -3,6 +3,115 @@ import { openApiSpec } from '../docs/openapi.js';
 
 const router = Router();
 
+// Serve Root Landing Page with Redirect to Swagger Docs
+router.get('/', (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LeadHunter API — Server Root</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>" />
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: #09090b;
+        color: #f4f4f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .card {
+        background: #18181b;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 40px;
+        max-width: 480px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 20px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        background-color: #4ade80;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 8px #4ade80;
+      }
+      h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #ffffff; }
+      p { color: #a1a1aa; font-size: 14px; margin-bottom: 28px; line-height: 1.5; }
+      .actions { display: flex; flex-direction: column; gap: 12px; }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 15px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+      .btn-primary {
+        background: #6366f1;
+        color: #ffffff;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+      }
+      .btn-primary:hover {
+        background: #4f46e5;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+      }
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.05);
+        color: #d4d4d8;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="badge">
+        <span class="dot"></span> Backend Active
+      </div>
+      <h1>LeadHunter AI API</h1>
+      <p>The backend server is running smoothly. Click below to view the interactive API documentation and test endpoints.</p>
+      <div class="actions">
+        <a href="/api-docs" class="btn btn-primary">
+          🚀 Open Swagger API Docs
+        </a>
+        <a href="/api/health" class="btn btn-secondary">
+          ❤️ Check Health Status
+        </a>
+      </div>
+    </div>
+  </body>
+</html>`);
+});
+
 // Serve Swagger HTML UI
 router.get('/api-docs', (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/html');
