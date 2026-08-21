@@ -32,3 +32,18 @@ model Lead {
   @@index([city])
   @@index([category])
 }
+
+model Template {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  channel     String   @default("EMAIL") // EMAIL, WHATSAPP
+  subject     String?
+  body        String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([channel])
+  @@index([isActive])
+}

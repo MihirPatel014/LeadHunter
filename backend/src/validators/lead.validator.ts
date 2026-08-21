@@ -44,7 +44,10 @@ export const leadQuerySchema = z.object({
   temperature: z.enum(TEMPERATURE_VALUES).optional(),
   city: z.string().optional(),
   category: z.string().optional(),
+  websiteStatus: z.enum(WEBSITE_STATUS_VALUES).optional(),
+  websiteType: z.enum(['ALL', 'NONE', 'CUSTOM', 'INSTAGRAM', 'FACEBOOK', 'INDIAMART', 'JUSTDIAL', 'SOCIAL_OR_DIRECTORY']).optional(),
 });
+
 
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;

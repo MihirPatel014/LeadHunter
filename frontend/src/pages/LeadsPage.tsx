@@ -18,30 +18,49 @@ import {
   MapPin,
   Shield,
   Sparkles,
+  FileSpreadsheet,
+  Table as TableIcon,
+  LayoutGrid,
+  Kanban,
+  Phone,
+  Mail,
+  Globe,
+  Star,
+  Flame,
 } from 'lucide-react';
+
 import { toast, Toaster } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { leadService } from '../services/leadService';
 import { Lead, LeadStatus, TemperatureStatus, CreateLeadPayload, UpdateLeadPayload } from '../types/lead';
-import { StatusBadge, TemperatureBadge, WebsiteStatusBadge } from '../components/leads/LeadBadges';
+import { StatusBadge, TemperatureBadge, WebsiteStatusBadge, WebsiteTypeBadge } from '../components/leads/LeadBadges';
 import { LeadFormModal } from '../components/leads/LeadFormModal';
 import { LeadDeleteDialog } from '../components/leads/LeadDeleteDialog';
+import { CsvImportModal } from '../components/leads/CsvImportModal';
+
 
 export const LeadsPage: React.FC = () => {
   const queryClient = useQueryClient();
 
+  // View Mode: 'table' | 'cards' | 'pipeline'
+  const [viewMode, setViewMode] = useState<'table' | 'cards' | 'pipeline'>('table');
+
   // Filters & Pagination State
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<LeadStatus | ''>('');
   const [temperatureFilter, setTemperatureFilter] = useState<TemperatureStatus | ''>('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [cityFilter, setCityFilter] = useState('');
+  const [websiteTypeFilter, setWebsiteTypeFilter] = useState<string>('');
+  const [websiteStatusFilter, setWebsiteStatusFilter] = useState<string>('');
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
 
@@ -53,7 +72,20 @@ export const LeadsPage: React.FC = () => {
 
   // Fetch leads with TanStack Query
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['leads', { page, limit, search, statusFilter, temperatureFilter, categoryFilter, cityFilter }],
+    queryKey: [
+      'leads',
+      {
+        page,
+        limit,
+        search,
+        statusFilter,
+        temperatureFilter,
+        categoryFilter,
+        cityFilter,
+        websiteTypeFilter,
+        websiteStatusFilter,
+      },
+    ],
     queryFn: () =>
       leadService.getLeads({
         page,
@@ -63,8 +95,11 @@ export const LeadsPage: React.FC = () => {
         temperature: (temperatureFilter as TemperatureStatus) || undefined,
         category: categoryFilter || undefined,
         city: cityFilter || undefined,
+        websiteType: websiteTypeFilter || undefined,
+        websiteStatus: (websiteStatusFilter as any) || undefined,
       }),
   });
+
 
   // Create Mutation
   const createMutation = useMutation({
@@ -226,7 +261,57 @@ export const LeadsPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View Mode Toggle Switcher */}
+          <div className="flex items-center p-1 bg-secondary/80 rounded-lg border border-border">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                viewMode === 'table'
+                  ? 'bg-card text-foreground shadow-sm font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Table View"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Table</span>
+            </button>
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`p-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                viewMode === 'cards'
+                  ? 'bg-card text-foreground shadow-sm font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Card Grid View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Cards</span>
+            </button>
+            <button
+              onClick={() => setViewMode('pipeline')}
+              className={`p-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                viewMode === 'pipeline'
+                  ? 'bg-card text-foreground shadow-sm font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Pipeline / Kanban View"
+            >
+              <Kanban className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Pipeline</span>
+            </button>
+          </div>
+
+          <div className="h-5 w-px bg-border hidden sm:block" />
+
+          <button
+            onClick={() => setIsImportOpen(true)}
+            className="px-3 py-2 rounded-md border border-border bg-card text-foreground hover:bg-secondary text-xs font-medium transition-colors flex items-center gap-1.5"
+            title="Import and preview Google Maps leads CSV"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
+            Import CSV
+          </button>
           <button
             onClick={() => bulkScoreMutation.mutate(undefined)}
             disabled={bulkScoreMutation.isPending || leads.length === 0}
@@ -260,11 +345,13 @@ export const LeadsPage: React.FC = () => {
             Add New Lead
           </button>
         </div>
+
+
       </div>
 
       {/* Filter Toolbar */}
       <div className="p-4 rounded-xl bg-card border border-border space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           {/* Search */}
           <div className="relative lg:col-span-2">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -275,7 +362,7 @@ export const LeadsPage: React.FC = () => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search business name, email, phone..."
+              placeholder="Search business name, website, phone..."
               className="w-full bg-background border border-border rounded-md pl-9 pr-4 py-2 text-xs focus:ring-1 focus:ring-primary focus:border-primary text-foreground placeholder:text-muted-foreground"
             />
           </div>
@@ -320,6 +407,27 @@ export const LeadsPage: React.FC = () => {
             </select>
           </div>
 
+          {/* Website Platform / Type Filter */}
+          <div>
+            <select
+              value={websiteTypeFilter}
+              onChange={(e) => {
+                setWebsiteTypeFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full bg-background border border-border rounded-md px-3 py-2 text-xs focus:ring-1 focus:ring-primary text-foreground"
+            >
+              <option value="">All Website Types</option>
+              <option value="CUSTOM">Dedicated Website</option>
+              <option value="INSTAGRAM">Instagram Profile</option>
+              <option value="FACEBOOK">Facebook Page</option>
+              <option value="INDIAMART">IndiaMART Catalog</option>
+              <option value="JUSTDIAL">Justdial Listing</option>
+              <option value="SOCIAL_OR_DIRECTORY">Any Social / Directory</option>
+              <option value="NONE">No Website (Missing)</option>
+            </select>
+          </div>
+
           {/* City Filter */}
           <div>
             <input
@@ -335,6 +443,7 @@ export const LeadsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
 
       {/* Bulk Action Toolbar */}
       <AnimatePresence>
@@ -435,201 +544,478 @@ export const LeadsPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Data Table Container */}
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border bg-muted/40 text-muted-foreground font-semibold uppercase tracking-wider text-[10px]">
-                {/* Select All Checkbox */}
-                <th className="py-3 px-4 w-10">
-                  <button onClick={toggleSelectAll} className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
-                    {allOnPageSelected ? (
-                      <CheckSquare className="w-4 h-4 text-indigo-400" />
-                    ) : someOnPageSelected ? (
-                      <Minus className="w-4 h-4 text-indigo-400" />
-                    ) : (
-                      <Square className="w-4 h-4" />
-                    )}
-                  </button>
-                </th>
-                <th className="py-3 px-4">Business</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">City</th>
-                <th className="py-3 px-4">Website</th>
-                <th className="py-3 px-4">Profile</th>
-                <th className="py-3 px-4">Score</th>
-                <th className="py-3 px-4">Temp</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Created</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                // Skeleton Rows
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="py-4 px-4"><div className="h-4 bg-muted rounded w-4" /></td>
-                    <td className="py-4 px-4">
-                      <div className="h-4 bg-muted rounded w-32 mb-1"></div>
-                      <div className="h-3 bg-muted rounded w-20"></div>
+      {/* Content Area according to viewMode */}
+      {viewMode === 'table' ? (
+        /* 1. Data Table View */
+        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-muted/40 text-muted-foreground font-semibold uppercase tracking-wider text-[10px]">
+                  {/* Select All Checkbox */}
+                  <th className="py-3 px-4 w-10">
+                    <button onClick={toggleSelectAll} className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                      {allOnPageSelected ? (
+                        <CheckSquare className="w-4 h-4 text-indigo-400" />
+                      ) : someOnPageSelected ? (
+                        <Minus className="w-4 h-4 text-indigo-400" />
+                      ) : (
+                        <Square className="w-4 h-4" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4">Business</th>
+                  <th className="py-3 px-4">Category</th>
+                  <th className="py-3 px-4">City</th>
+                  <th className="py-3 px-4">Website</th>
+                  <th className="py-3 px-4">Profile</th>
+                  <th className="py-3 px-4">Score</th>
+                  <th className="py-3 px-4">Temp</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Created</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {isLoading ? (
+                  // Skeleton Rows
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="py-4 px-4"><div className="h-4 bg-muted rounded w-4" /></td>
+                      <td className="py-4 px-4">
+                        <div className="h-4 bg-muted rounded w-32 mb-1"></div>
+                        <div className="h-3 bg-muted rounded w-20"></div>
+                      </td>
+                      <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-16"></div></td>
+                      <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-16"></div></td>
+                      <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-24"></div></td>
+                      <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-10"></div></td>
+                      <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-8"></div></td>
+                      <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-12"></div></td>
+                      <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-16"></div></td>
+                      <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-20"></div></td>
+                      <td className="py-4 px-4 text-right"><div className="h-4 bg-muted rounded w-12 ml-auto"></div></td>
+                    </tr>
+                  ))
+                ) : isError ? (
+                  <tr>
+                    <td colSpan={colSpan} className="py-12 px-4 text-center text-rose-400 text-xs">
+                      Failed to load leads. Please try refreshing.
                     </td>
-                    <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-16"></div></td>
-                    <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-16"></div></td>
-                    <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-24"></div></td>
-                    <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-10"></div></td>
-                    <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-8"></div></td>
-                    <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-12"></div></td>
-                    <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-16"></div></td>
-                    <td className="py-4 px-4"><div className="h-3 bg-muted rounded w-20"></div></td>
-                    <td className="py-4 px-4 text-right"><div className="h-4 bg-muted rounded w-12 ml-auto"></div></td>
                   </tr>
-                ))
-              ) : isError ? (
-                <tr>
-                  <td colSpan={colSpan} className="py-12 px-4 text-center text-rose-400 text-xs">
-                    Failed to load leads. Please try refreshing.
-                  </td>
-                </tr>
-              ) : leads.length === 0 ? (
-                // Empty State
-                <tr>
-                  <td colSpan={colSpan} className="py-12 px-4 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
-                      <Building2 className="w-8 h-8 text-muted-foreground/50" />
-                      <p className="font-semibold text-sm text-foreground">No leads found</p>
-                      <p className="text-xs text-muted-foreground text-center">
-                        No lead records match your search or filter criteria. Add a new lead or adjust your filters.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                leads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className={`hover:bg-accent/40 transition-colors group ${selectedIds.has(lead.id) ? 'bg-indigo-500/5' : ''}`}
-                  >
-                    {/* Checkbox */}
-                    <td className="py-3 px-4">
-                      <button
-                        onClick={() => toggleSelect(lead.id)}
-                        className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        {selectedIds.has(lead.id) ? (
-                          <CheckSquare className="w-4 h-4 text-indigo-400" />
-                        ) : (
-                          <Square className="w-4 h-4" />
+                ) : leads.length === 0 ? (
+                  // Empty State
+                  <tr>
+                    <td colSpan={colSpan} className="py-12 px-4 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                        <Building2 className="w-8 h-8 text-muted-foreground/50" />
+                        <p className="font-semibold text-sm text-foreground">No leads found</p>
+                        <p className="text-xs text-muted-foreground text-center">
+                          No lead records match your search or filter criteria. Add a new lead or adjust your filters.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  leads.map((lead) => (
+                    <tr
+                      key={lead.id}
+                      className={`hover:bg-accent/40 transition-colors group ${selectedIds.has(lead.id) ? 'bg-indigo-500/5' : ''}`}
+                    >
+                      {/* Checkbox */}
+                      <td className="py-3 px-4">
+                        <button
+                          onClick={() => toggleSelect(lead.id)}
+                          className="flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {selectedIds.has(lead.id) ? (
+                            <CheckSquare className="w-4 h-4 text-indigo-400" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+                      </td>
+
+                      {/* Business */}
+                      <td className="py-3 px-4 font-medium text-foreground">
+                        <Link to={`/leads/${lead.id}`} className="hover:underline font-semibold text-foreground">
+                          {lead.businessName}
+                        </Link>
+                        {lead.email && (
+                          <p className="text-[11px] text-muted-foreground font-mono">{lead.email}</p>
                         )}
-                      </button>
-                    </td>
+                      </td>
 
-                    {/* Business */}
-                    <td className="py-3 px-4 font-medium text-foreground">
-                      <Link to={`/leads/${lead.id}`} className="hover:underline font-semibold text-foreground">
-                        {lead.businessName}
-                      </Link>
-                      {lead.email && (
-                        <p className="text-[11px] text-muted-foreground font-mono">{lead.email}</p>
-                      )}
-                    </td>
+                      {/* Category */}
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {lead.category || '-'}
+                      </td>
 
-                    {/* Category */}
-                    <td className="py-3 px-4 text-muted-foreground">
-                      {lead.category || '-'}
-                    </td>
+                      {/* City */}
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {lead.city || '-'}
+                      </td>
 
-                    {/* City */}
-                    <td className="py-3 px-4 text-muted-foreground">
-                      {lead.city || '-'}
-                    </td>
+                      {/* Website */}
+                      <td className="py-3 px-4">
+                        {lead.website ? (
+                          <div className="flex flex-col gap-1 items-start">
+                            <div className="flex items-center gap-1.5">
+                              <WebsiteTypeBadge url={lead.website} />
+                              <WebsiteStatusBadge status={lead.websiteStatus} />
+                            </div>
+                            <a
+                              href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-[11px] max-w-[170px] truncate"
+                              title={lead.website}
+                            >
+                              {lead.website.replace(/^https?:\/\/(www\.)?/, '')}
+                              <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-500/10 text-zinc-500 border border-zinc-500/20">
+                              No Website
+                            </span>
+                            <WebsiteStatusBadge status={lead.websiteStatus} />
+                          </div>
+                        )}
+                      </td>
 
-                    {/* Website */}
-                    <td className="py-3 px-4">
-                      {lead.website ? (
-                        <a
-                          href={lead.website}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-[11px]"
-                        >
-                          Website <ExternalLink className="w-3 h-3" />
-                        </a>
-                      ) : (
-                        <WebsiteStatusBadge status={lead.websiteStatus} />
-                      )}
-                    </td>
+                      {/* Google Profile / Maps */}
+                      <td className="py-3 px-4">
+                        {lead.mapsUrl ? (
+                          <a
+                            href={lead.mapsUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline font-medium text-[11px]"
+                          >
+                            <MapPin className="w-3 h-3" /> Maps
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground text-[11px]">-</span>
+                        )}
+                      </td>
 
-                    {/* Google Profile / Maps */}
-                    <td className="py-3 px-4">
-                      {lead.mapsUrl ? (
-                        <a
-                          href={lead.mapsUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline font-medium text-[11px]"
-                        >
-                          <MapPin className="w-3 h-3" /> Maps
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground text-[11px]">-</span>
-                      )}
-                    </td>
+                      {/* Score */}
+                      <td className="py-3 px-4">
+                        <span className="font-bold text-foreground font-mono">{lead.score}</span>
+                        <span className="text-[10px] text-muted-foreground">/100</span>
+                      </td>
 
-                    {/* Score */}
-                    <td className="py-3 px-4">
-                      <span className="font-bold text-foreground font-mono">{lead.score}</span>
-                      <span className="text-[10px] text-muted-foreground">/100</span>
-                    </td>
+                      {/* Temperature */}
+                      <td className="py-3 px-4">
+                        <TemperatureBadge temperature={lead.temperature} />
+                      </td>
 
-                    {/* Temperature */}
-                    <td className="py-3 px-4">
-                      <TemperatureBadge temperature={lead.temperature} />
-                    </td>
+                      {/* Status */}
+                      <td className="py-3 px-4">
+                        <StatusBadge status={lead.status} />
+                      </td>
 
-                    {/* Status */}
-                    <td className="py-3 px-4">
-                      <StatusBadge status={lead.status} />
-                    </td>
+                      {/* Created */}
+                      <td className="py-3 px-4 text-muted-foreground text-[11px] font-mono">
+                        {new Date(lead.createdAt).toLocaleDateString()}
+                      </td>
 
-                    {/* Created */}
-                    <td className="py-3 px-4 text-muted-foreground text-[11px] font-mono">
-                      {new Date(lead.createdAt).toLocaleDateString()}
-                    </td>
+                      {/* Actions */}
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                          <Link
+                            to={`/leads/${lead.id}`}
+                            className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Link>
+                          <button
+                            onClick={() => setEditingLead(lead)}
+                            className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                            title="Edit Lead"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeletingLead(lead)}
+                            className="p-1.5 rounded-md hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-colors"
+                            title="Delete Lead"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : viewMode === 'cards' ? (
+        /* 2. Interactive Card Grid View */
+        <div className="space-y-4">
+          {/* Select all bar for Cards */}
+          <div className="flex items-center justify-between px-1 text-xs">
+            <button
+              onClick={toggleSelectAll}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-medium"
+            >
+              {allOnPageSelected ? (
+                <CheckSquare className="w-4 h-4 text-indigo-400" />
+              ) : (
+                <Square className="w-4 h-4" />
+              )}
+              Select all on this page ({leads.length})
+            </button>
+            <span className="text-muted-foreground">Showing cards layout</span>
+          </div>
 
-                    {/* Actions */}
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="p-5 rounded-xl border border-border bg-card animate-pulse space-y-4">
+                  <div className="h-5 bg-muted rounded w-1/2"></div>
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                  <div className="h-16 bg-muted rounded"></div>
+                </div>
+              ))}
+            </div>
+          ) : leads.length === 0 ? (
+            <div className="p-12 text-center rounded-xl border border-border bg-card">
+              <Building2 className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
+              <p className="font-semibold text-sm text-foreground">No leads found</p>
+              <p className="text-xs text-muted-foreground">Try clearing or adjusting filters.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {leads.map((lead) => {
+                const isSelected = selectedIds.has(lead.id);
+
+                return (
+                  <motion.div
+                    key={lead.id}
+                    layout
+                    className={`rounded-xl border p-5 bg-card hover:border-primary/50 transition-all shadow-sm flex flex-col justify-between gap-4 group ${
+                      isSelected ? 'border-primary ring-1 ring-primary bg-primary/[0.02]' : 'border-border'
+                    }`}
+                  >
+                    {/* Top Row: Business Name, Select & Temp */}
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-start gap-2.5">
+                          <button
+                            onClick={() => toggleSelect(lead.id)}
+                            className="mt-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-4 h-4 text-indigo-400" />
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </button>
+                          <div>
+                            <Link
+                              to={`/leads/${lead.id}`}
+                              className="font-bold text-sm text-foreground hover:underline line-clamp-1 group-hover:text-primary transition-colors"
+                            >
+                              {lead.businessName}
+                            </Link>
+                            <span className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <MapPin className="w-3 h-3 text-muted-foreground/70" />
+                              {lead.city || lead.address || 'Unknown Location'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <TemperatureBadge temperature={lead.temperature} />
+                      </div>
+
+                      {/* Category & Status */}
+                      <div className="flex flex-wrap items-center gap-1.5 my-3">
+                        <StatusBadge status={lead.status} />
+                        {lead.category && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-secondary text-muted-foreground border border-border truncate max-w-[180px]">
+                            {lead.category}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-amber-500/10 text-amber-500 font-semibold border border-amber-500/20">
+                          <Star className="w-2.5 h-2.5 fill-amber-500" />
+                          {lead.rating ? lead.rating : 'Score: ' + lead.score}
+                        </span>
+                      </div>
+
+                      {/* Contact Details List */}
+                      <div className="space-y-1.5 text-xs text-muted-foreground bg-secondary/30 p-2.5 rounded-lg border border-border/60 font-mono text-[11px]">
+                        {lead.phone && (
+                          <div className="flex items-center gap-2 truncate">
+                            <Phone className="w-3 h-3 text-primary shrink-0" />
+                            <span>{lead.phone}</span>
+                          </div>
+                        )}
+                        {lead.email && (
+                          <div className="flex items-center gap-2 truncate">
+                            <Mail className="w-3 h-3 text-primary shrink-0" />
+                            <span className="truncate">{lead.email}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <Globe className="w-3 h-3 text-primary shrink-0" />
+                            <WebsiteTypeBadge url={lead.website} />
+                            {lead.website ? (
+                              <a
+                                href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="truncate text-primary hover:underline"
+                              >
+                                {lead.website.replace(/^https?:\/\/(www\.)?/, '')}
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground/60">No Site</span>
+                            )}
+                          </div>
+
+                          {lead.mapsUrl && (
+                            <a
+                              href={lead.mapsUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-emerald-500 hover:underline shrink-0 text-[10px] flex items-center gap-0.5 font-sans font-medium"
+                            >
+                              <MapPin className="w-2.5 h-2.5" /> Maps
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Actions Row */}
+                    <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
+                      <div className="text-[10px] text-muted-foreground">
+                        Added {new Date(lead.createdAt).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center gap-1">
                         <Link
                           to={`/leads/${lead.id}`}
-                          className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-                          title="View Details"
+                          className="px-2 py-1 rounded bg-secondary hover:bg-secondary/80 text-foreground font-medium text-[11px] flex items-center gap-1"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-3 h-3" /> View
                         </Link>
                         <button
                           onClick={() => setEditingLead(lead)}
-                          className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-                          title="Edit Lead"
+                          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+                          title="Edit"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => setDeletingLead(lead)}
-                          className="p-1.5 rounded-md hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-colors"
-                          title="Delete Lead"
+                          className="p-1 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500"
+                          title="Delete"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
+      ) : (
+        /* 3. Pipeline / Kanban View by Status */
+        <div className="space-y-3">
+          <div className="text-xs text-muted-foreground px-1">
+            Showing pipeline grouped by lead qualification status.
+          </div>
+
+          <div className="flex gap-4 overflow-x-auto pb-4 pt-1">
+            {(
+              [
+                'NEW',
+                'QUALIFIED',
+                'CONTACTED',
+                'REPLIED',
+                'INTERESTED',
+                'CONVERTED',
+                'DISQUALIFIED',
+              ] as LeadStatus[]
+            ).map((statusGroup) => {
+              const columnLeads = leads.filter((l) => l.status === statusGroup);
+
+              return (
+                <div
+                  key={statusGroup}
+                  className="w-72 shrink-0 flex flex-col bg-secondary/30 border border-border rounded-xl p-3 max-h-[650px]"
+                >
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={statusGroup} />
+                    </div>
+                    <span className="text-xs font-semibold text-muted-foreground bg-card px-2 py-0.5 rounded-full border border-border">
+                      {columnLeads.length}
+                    </span>
+                  </div>
+
+                  {/* Column Items */}
+                  <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                    {columnLeads.length === 0 ? (
+                      <div className="py-8 text-center text-xs text-muted-foreground/60 border border-dashed border-border/60 rounded-lg">
+                        No leads
+                      </div>
+                    ) : (
+                      columnLeads.map((lead) => (
+                        <motion.div
+                          key={lead.id}
+                          className="bg-card border border-border p-3.5 rounded-lg shadow-sm hover:border-primary/40 transition-all space-y-2"
+                        >
+                          <div className="flex items-start justify-between gap-1.5">
+                            <Link
+                              to={`/leads/${lead.id}`}
+                              className="font-semibold text-xs text-foreground hover:underline line-clamp-1"
+                            >
+                              {lead.businessName}
+                            </Link>
+                            <TemperatureBadge temperature={lead.temperature} />
+                          </div>
+
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {lead.city || lead.category || 'General'}
+                          </p>
+
+                          <div className="flex items-center justify-between text-[11px] pt-2 border-t border-border/50">
+                            <div className="flex items-center gap-1 font-mono text-amber-500 text-[10px]">
+                              <Flame className="w-3 h-3 fill-amber-500" />
+                              {lead.score} pts
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <WebsiteTypeBadge url={lead.website} />
+                              <Link
+                                to={`/leads/${lead.id}`}
+                                className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </Link>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
         {/* Pagination Footer */}
         <div className="p-4 border-t border-border bg-card flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
@@ -679,9 +1065,9 @@ export const LeadsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Form Modal for Create & Edit */}
+
       <LeadFormModal
         isOpen={isCreateOpen || !!editingLead}
         onClose={() => {
@@ -691,6 +1077,12 @@ export const LeadsPage: React.FC = () => {
         onSubmit={handleCreateOrUpdate}
         initialData={editingLead}
         isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      {/* CSV Import Preview & Verification Modal */}
+      <CsvImportModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -708,3 +1100,4 @@ export const LeadsPage: React.FC = () => {
     </motion.div>
   );
 };
+

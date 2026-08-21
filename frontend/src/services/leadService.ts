@@ -52,8 +52,11 @@ export const leadService = {
     if (params.temperature) query.append('temperature', params.temperature);
     if (params.city) query.append('city', params.city);
     if (params.category) query.append('category', params.category);
+    if (params.websiteStatus) query.append('websiteStatus', params.websiteStatus);
+    if (params.websiteType && params.websiteType !== 'ALL') query.append('websiteType', params.websiteType);
 
     const res = await fetchApi<PaginatedLeadsResponse>(`/api/leads?${query.toString()}`);
+
     return res.data!;
   },
 
@@ -128,4 +131,67 @@ export const leadService = {
     const results = await Promise.all(payload.ids.map((id) => leadService.updateLead(id, payload.data)));
     return { updated: results.length };
   },
+
+  previewCsvImport: async (csvContent: string): Promise<{
+    total: number;
+    newLeads: number;
+    duplicates: number;
+    items: Array<{
+      tempId: string;
+      businessName: string;
+      category: string | null;
+      city: string | null;
+      address: string | null;
+      website: string | null;
+      mapsUrl: string | null;
+      phone: string | null;
+      email: string | null;
+      rating: number | null;
+      reviewCount: number | null;
+      isDuplicate: boolean;
+      duplicateReason?: string;
+      existingId?: number;
+      selected?: boolean;
+    }>;
+  }> => {
+    const res = await fetchApi<{
+      total: number;
+      newLeads: number;
+      duplicates: number;
+      items: any[];
+    }>('/api/leads/import/preview', {
+      method: 'POST',
+      body: JSON.stringify({ csvContent }),
+    });
+    return res.data!;
+  },
+
+  confirmCsvImport: async (leads: Array<{
+    businessName: string;
+    category?: string | null;
+    city?: string | null;
+    address?: string | null;
+    website?: string | null;
+    mapsUrl?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    rating?: number | null;
+    reviewCount?: number | null;
+    updateIfExisting?: boolean;
+  }>): Promise<{
+    created: number;
+    updated: number;
+    total: number;
+  }> => {
+    const res = await fetchApi<{
+      created: number;
+      updated: number;
+      total: number;
+    }>('/api/leads/import/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ leads }),
+    });
+    return res.data!;
+  },
 };
+

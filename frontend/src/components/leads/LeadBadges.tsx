@@ -59,3 +59,65 @@ export const WebsiteStatusBadge: React.FC<{ status: WebsiteStatus }> = ({ status
     </span>
   );
 };
+
+export const WebsiteTypeBadge: React.FC<{ url: string | null | undefined }> = ({ url }) => {
+  if (!url) return null;
+  const clean = url.trim().toLowerCase();
+
+  if (clean.includes('instagram.com')) {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/20">
+        Instagram
+      </span>
+    );
+  }
+  if (clean.includes('facebook.com') || clean.includes('fb.com')) {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-600/20">
+        Facebook
+      </span>
+    );
+  }
+  if (clean.includes('indiamart.com')) {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-600/10 text-emerald-700 dark:text-emerald-300 border border-emerald-600/25">
+        IndiaMART
+      </span>
+    );
+  }
+  if (clean.includes('justdial.com')) {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+        Justdial
+      </span>
+    );
+  }
+  if (clean.includes('linkedin.com')) {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-sky-600/10 text-sky-600 dark:text-sky-400 border border-sky-600/20">
+        LinkedIn
+      </span>
+    );
+  }
+  if (clean.includes('twitter.com') || clean.includes('x.com')) {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-neutral-600/10 text-neutral-600 dark:text-neutral-400 border border-neutral-600/20">
+        X / Twitter
+      </span>
+    );
+  }
+  if (clean.includes('youtube.com') || clean.includes('youtu.be')) {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+        YouTube
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+      Website
+    </span>
+  );
+};
+

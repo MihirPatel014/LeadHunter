@@ -1,6 +1,7 @@
 import { Lead } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { Temperature } from '../types/lead.types.js';
+import { classifyWebsite } from '../utils/website-classifier.js';
 
 export interface ScoringReason {
   rule: string;
@@ -21,14 +22,20 @@ export class LeadScoringService {
     const reasons: ScoringReason[] = [];
     let totalScore = 0;
 
+    const webClassification = classifyWebsite(lead.website);
+
     // Rule 1: No website (+30)
-    if (!lead.website || !lead.website.trim()) {
+    if (webClassification.type === 'NONE') {
       reasons.push({ rule: 'No website', points: 30 });
       totalScore += 30;
+    } else if (webClassification.isSocialOrDirectory) {
+      // Rule 1b: Uses Social Media/Directory instead of custom website (+25 hot prospect for web dev / digital marketing)
+      reasons.push({ rule: `Only has ${webClassification.label} (No dedicated website)`, points: 25 });
+      totalScore += 25;
     }
 
     // Rule 2: Broken website (+25)
-    if (lead.websiteStatus === 'OFFLINE' || lead.websiteStatus === 'INVALID') {
+    if (!webClassification.isSocialOrDirectory && (lead.websiteStatus === 'OFFLINE' || lead.websiteStatus === 'INVALID')) {
       reasons.push({ rule: 'Broken website', points: 25 });
       totalScore += 25;
     }
@@ -38,6 +45,7 @@ export class LeadScoringService {
       reasons.push({ rule: 'Phone available', points: 5 });
       totalScore += 5;
     }
+
 
     // Rule 4: Email available (+5)
     if (lead.email && lead.email.trim()) {

@@ -43,7 +43,10 @@ export interface LeadQueryParams {
   temperature?: TemperatureStatus;
   city?: string;
   category?: string;
+  websiteStatus?: WebsiteStatus;
+  websiteType?: string;
 }
+
 
 export interface PaginatedLeadsResponse {
   leads: Lead[];

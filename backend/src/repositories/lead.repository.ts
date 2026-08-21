@@ -13,16 +13,75 @@ export class LeadRepository {
     if (temperature) where.temperature = temperature;
     if (city) where.city = { contains: city };
     if (category) where.category = { contains: category };
+    if (query.websiteStatus) where.websiteStatus = query.websiteStatus;
+
+    if (query.websiteType) {
+      switch (query.websiteType) {
+        case 'NONE':
+          where.OR = [
+            { website: null },
+            { website: '' },
+          ];
+          break;
+        case 'INSTAGRAM':
+          where.website = { contains: 'instagram.com' };
+          break;
+        case 'FACEBOOK':
+          where.OR = [
+            { website: { contains: 'facebook.com' } },
+            { website: { contains: 'fb.com' } },
+          ];
+          break;
+        case 'INDIAMART':
+          where.website = { contains: 'indiamart.com' };
+          break;
+        case 'JUSTDIAL':
+          where.website = { contains: 'justdial.com' };
+          break;
+        case 'SOCIAL_OR_DIRECTORY':
+          where.OR = [
+            { website: { contains: 'instagram.com' } },
+            { website: { contains: 'facebook.com' } },
+            { website: { contains: 'indiamart.com' } },
+            { website: { contains: 'justdial.com' } },
+            { website: { contains: 'linkedin.com' } },
+            { website: { contains: 'twitter.com' } },
+            { website: { contains: 'x.com' } },
+            { website: { contains: 'youtube.com' } },
+            { website: { contains: 'tradeindia.com' } },
+          ];
+          break;
+        case 'CUSTOM':
+          where.AND = [
+            { website: { not: null } },
+            { website: { not: '' } },
+            { website: { not: { contains: 'instagram.com' } } },
+            { website: { not: { contains: 'facebook.com' } } },
+            { website: { not: { contains: 'indiamart.com' } } },
+            { website: { not: { contains: 'justdial.com' } } },
+            { website: { not: { contains: 'youtube.com' } } },
+          ];
+          break;
+      }
+    }
 
     if (search) {
-      where.OR = [
+      const searchConditions = [
         { businessName: { contains: search } },
         { city: { contains: search } },
         { category: { contains: search } },
         { email: { contains: search } },
         { phone: { contains: search } },
+        { website: { contains: search } },
       ];
+
+      if (where.OR) {
+        where.AND = [...(Array.isArray(where.AND) ? where.AND : []), { OR: searchConditions }];
+      } else {
+        where.OR = searchConditions;
+      }
     }
+
 
     const [leads, total] = await Promise.all([
       prisma.lead.findMany({

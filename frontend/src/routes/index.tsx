@@ -5,7 +5,8 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { LeadsPage } from '../pages/LeadsPage';
 import { LeadDetailsPage } from '../pages/LeadDetailsPage';
 import { DiscoveryPage } from '../pages/DiscoveryPage';
-import { SettingsPage } from '../pages/SettingsPage';
+import { TemplatesPage } from '../pages/TemplatesPage';
+import { TemplateEditorPage } from '../pages/TemplateEditorPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -16,15 +17,9 @@ export const AppRoutes: React.FC = () => {
         <Route path="leads" element={<LeadsPage />} />
         <Route path="leads/:id" element={<LeadDetailsPage />} />
         <Route path="discovery" element={<DiscoveryPage />} />
-        <Route
-          path="templates"
-          element={
-            <PlaceholderPage
-              title="Outreach Templates"
-              description="Create and customize reusable email and WhatsApp templates with variables."
-            />
-          }
-        />
+        <Route path="templates" element={<TemplatesPage />} />
+        <Route path="templates/new" element={<TemplateEditorPage />} />
+        <Route path="templates/:id" element={<TemplateEditorPage />} />
         <Route
           path="campaigns"
           element={
@@ -81,7 +76,12 @@ export const AppRoutes: React.FC = () => {
         />
         <Route
           path="settings"
-          element={<SettingsPage />}
+          element={
+            <PlaceholderPage
+              title="Settings"
+              description="Customize user profile, sender information, and lead scoring rules."
+            />
+          }
         />
         <Route
           path="*"
