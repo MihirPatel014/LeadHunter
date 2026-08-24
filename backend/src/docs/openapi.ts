@@ -1,6 +1,6 @@
 /**
  * OpenAPI 3.0 specification for LeadHunter AI backend.
- * All current endpoints (Chunks 01–04) are documented here.
+ * All current endpoints (Chunks 01–08) are documented here.
  */
 export const openApiSpec = {
   openapi: '3.0.3',
@@ -8,7 +8,7 @@ export const openApiSpec = {
     title: 'LeadHunter AI API',
     version: '1.0.0',
     description:
-      'REST API for LeadHunter AI — discover local business leads, manage them, run discovery, and validate websites.',
+      'REST API for LeadHunter AI — discover local business leads, manage them, run discovery, validate websites, and generate message previews.',
     contact: { email: 'mihirbuilds@gmail.com' },
   },
   servers: [{ url: 'http://localhost:5000', description: 'Local development server' }],
@@ -16,6 +16,7 @@ export const openApiSpec = {
     { name: 'Health', description: 'API health check' },
     { name: 'Leads', description: 'Lead CRUD and management' },
     { name: 'Discovery', description: 'SerpAPI-powered lead discovery' },
+    { name: 'Messages', description: 'Message generation and preview' },
     { name: 'Integrations', description: 'Third-party integration status' },
   ],
   components: {
@@ -60,6 +61,13 @@ export const openApiSpec = {
           page: { type: 'integer', example: 1 },
           limit: { type: 'integer', example: 20 },
           totalPages: { type: 'integer', example: 7 },
+        },
+      },
+      RenderedMessage: {
+        type: 'object',
+        properties: {
+          subject: { type: 'string', nullable: true, example: 'Quick question about Aura Salon Surat' },
+          body: { type: 'string', example: 'Hi there, I noticed your salon in Surat...' },
         },
       },
       SuccessResponse: {
@@ -286,6 +294,68 @@ export const openApiSpec = {
         },
       },
     },
+    '/api/messages/preview': {
+      post: {
+        tags: ['Messages'],
+        summary: 'Preview a rendered message',
+        description: 'Combines a Lead and a Template to produce a rendered message preview with all variables substituted.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['leadId', 'templateId'],
+                properties: {
+                  leadId: { type: 'integer', example: 123, description: 'ID of the lead to use for variable substitution' },
+                  templateId: { type: 'integer', example: 5, description: 'ID of the template to render' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Rendered message preview',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        lead: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 123 },
+                            businessName: { type: 'string', example: 'Aura Salon Surat' },
+                            category: { type: 'string', nullable: true, example: 'salon' },
+                            city: { type: 'string', nullable: true, example: 'Surat' },
+                          },
+                        },
+                        template: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 5 },
+                            name: { type: 'string', example: 'Cold Outreach v1' },
+                            channel: { type: 'string', example: 'EMAIL' },
+                          },
+                        },
+                        rendered: { $ref: '#/components/schemas/RenderedMessage' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          '404': { description: 'Lead or template not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
     '/api/integrations/serpapi/status': {
       get: {
         tags: ['Integrations'],
@@ -310,5 +380,385 @@ export const openApiSpec = {
         },
       },
     },
+    '/api/personalization/status': {
+      get: {
+        tags: ['Personalization'],
+        summary: 'AI Provider configuration status',
+        description: 'Returns the current AI provider configuration, model, and availability.',
+        responses: {
+          '200': {
+            description: 'AI provider status',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        provider: { type: 'string', example: 'mock' },
+                        isConfigured: { type: 'boolean', example: true },
+                        model: { type: 'string', example: 'local-heuristic-v1' },
+                        availableProviders: {
+                          type: 'array',
+                          items: { type: 'string' },
+                          example: ['mock', 'gemini', 'openai'],
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/personalization/generate': {
+      post: {
+        tags: ['Personalization'],
+        summary: 'Generate AI personalized message',
+        description: 'Generates an AI personalized outreach message combining structured lead facts and templates without hallucinations.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['leadId', 'templateId'],
+                properties: {
+                  leadId: { type: 'integer', example: 123 },
+                  templateId: { type: 'integer', example: 5 },
+                  customInstructions: { type: 'string', nullable: true, example: 'Emphasize mobile responsiveness.' },
+                  provider: { type: 'string', enum: ['mock', 'gemini', 'openai'], example: 'mock' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Personalized message result',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        lead: { type: 'object' },
+                        template: { type: 'object' },
+                        baseRendered: { $ref: '#/components/schemas/RenderedMessage' },
+                        personalized: { $ref: '#/components/schemas/RenderedMessage' },
+                        metadata: {
+                          type: 'object',
+                          properties: {
+                            provider: { type: 'string', example: 'mock' },
+                            model: { type: 'string', example: 'local-heuristic-v1' },
+                            aiEnhanced: { type: 'boolean', example: true },
+                            reasoning: { type: 'string' },
+                            usedFallback: { type: 'boolean', example: false },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Validation error' },
+          '404': { description: 'Lead or template not found' },
+        },
+      },
+    },
+    '/api/integrations/gmail/status': {
+      get: {
+        tags: ['Outreach & Gmail'],
+        summary: 'Get Gmail integration connection status',
+        description: 'Returns connection health, authenticated Gmail address, and credential configuration status.',
+        responses: {
+          '200': {
+            description: 'Gmail status payload',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        isConnected: { type: 'boolean', example: true },
+                        email: { type: 'string', example: 'outreach@company.com' },
+                        provider: { type: 'string', example: 'GMAIL' },
+                        mode: { type: 'string', example: 'oauth' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/integrations/gmail/connect': {
+      post: {
+        tags: ['Outreach & Gmail'],
+        summary: 'Initiate Gmail OAuth connection',
+        description: 'Generates Google OAuth consent URL for connecting a sender Gmail account.',
+        responses: {
+          '200': {
+            description: 'OAuth URL',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        authUrl: { type: 'string', example: 'https://accounts.google.com/o/oauth2/v2/auth?...' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/outreach/email/send': {
+      post: {
+        tags: ['Outreach & Gmail'],
+        summary: 'Backend-controlled single email dispatch',
+        description: 'Dispatches an email message via Gmail/Mock provider, logs sent record, and advances lead status.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['recipient', 'subject', 'body'],
+                properties: {
+                  leadId: { type: 'integer', example: 123 },
+                  recipient: { type: 'string', example: 'owner@business.com' },
+                  subject: { type: 'string', example: 'Question regarding your salon website' },
+                  body: { type: 'string', example: 'Hi there...' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Email dispatched successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    message: { type: 'string' },
+                    data: { type: 'object' },
+                  },
+                },
+              },
+            },
+          },
+          '400': { description: 'Validation error' },
+          '502': { description: 'Dispatch provider error' },
+        },
+      },
+    },
+    '/api/outreach/sent': {
+      get: {
+        tags: ['Outreach & Gmail'],
+        summary: 'Sent messages history',
+        description: 'Returns sent outreach email records logged in database.',
+        responses: {
+          '200': {
+            description: 'List of sent messages',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'array',
+                      items: { type: 'object' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/personalization/test': {
+      post: {
+        tags: ['Personalization'],
+        summary: 'Direct AI Chat & Prompt Test',
+        description: 'Sends a direct prompt to the active AI provider (Gemini / OpenAI) to test connectivity and output.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['prompt'],
+                properties: {
+                  prompt: { type: 'string', example: 'Hello Gemini! Give me a 1-line hook for a local salon.' },
+                  provider: { type: 'string', example: 'gemini' },
+                  model: { type: 'string', example: 'gemini-2.5-flash' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'AI model reply',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        success: { type: 'boolean', example: true },
+                        reply: { type: 'string' },
+                        provider: { type: 'string' },
+                        model: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/integrations/whatsapp/status': {
+      get: {
+        tags: ['Integrations'],
+        summary: 'OpenWA WhatsApp gateway status',
+        description: 'Returns OpenWA gateway reachability and configured session status without exposing the API key.',
+        responses: {
+          '200': {
+            description: 'WhatsApp integration status',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        isConnected: { type: 'boolean' },
+                        provider: { type: 'string' },
+                        mode: { type: 'string', enum: ['openwa', 'unconfigured'] },
+                        baseUrl: { type: 'string', nullable: true },
+                        sessionId: { type: 'string', nullable: true },
+                        sessionStatus: { type: 'string', nullable: true },
+                        gatewayReachable: { type: 'boolean' },
+                        precheckContacts: { type: 'boolean' },
+                        error: { type: 'string', nullable: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/outreach/whatsapp/send': {
+      post: {
+        tags: ['Outreach & Gmail'],
+        summary: 'Send WhatsApp text message via OpenWA',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['recipient', 'body'],
+                properties: {
+                  leadId: { type: 'integer', example: 123 },
+                  recipient: { type: 'string', example: '+919876543210' },
+                  body: { type: 'string', maxLength: 4096, example: 'Hi! Quick question about your website.' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'WhatsApp message dispatched successfully' },
+        },
+      },
+    },
+    '/api/campaigns': {
+      get: {
+        tags: ['Campaigns'],
+        summary: 'List outreach campaigns',
+        responses: { '200': { description: 'List of campaigns' } },
+      },
+      post: {
+        tags: ['Campaigns'],
+        summary: 'Create outreach campaign',
+        responses: { '201': { description: 'Campaign created' } },
+      },
+    },
+    '/api/campaigns/{id}/run': {
+      post: {
+        tags: ['Campaigns'],
+        summary: 'Execute campaign and fan out to approval queue',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: { '200': { description: 'Run completed and approvals enqueued' } },
+      },
+    },
+    '/api/follow-ups': {
+      get: {
+        tags: ['Follow-Ups'],
+        summary: 'List scheduled and historical follow-ups',
+        responses: { '200': { description: 'Follow-ups list' } },
+      },
+    },
+    '/api/follow-ups/process-now': {
+      post: {
+        tags: ['Follow-Ups'],
+        summary: 'Process due follow-ups into approval queue',
+        responses: { '200': { description: 'Due items processed' } },
+      },
+    },
+    '/api/messages/replies': {
+      get: {
+        tags: ['Replies & Inbox'],
+        summary: 'List inbound replies from outreach emails',
+        responses: { '200': { description: 'Replies list' } },
+      },
+    },
+    '/api/messages/replies/sync': {
+      post: {
+        tags: ['Replies & Inbox'],
+        summary: 'Sync Gmail threads and advance lead status to REPLIED',
+        responses: { '200': { description: 'Sync completed' } },
+      },
+    },
   },
 };
+

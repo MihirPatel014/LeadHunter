@@ -9,3 +9,7 @@ coverage/
 *.db
 *.db-journal
 prisma/*.db
+.dropstone/
+.pnpm-store/
+*.flag
+docs/client_secret*.json

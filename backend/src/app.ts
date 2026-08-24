@@ -3,23 +3,69 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config/env.js';
+import docsRoutes from './routes/docs.routes.js';
 import healthRoutes from './routes/health.routes.js';
 import leadRoutes from './routes/lead.routes.js';
 import discoveryRoutes from './routes/discovery.routes.js';
 import templateRoutes from './routes/template.routes.js';
+import messageRoutes from './routes/message.routes.js';
+import personalizationRoutes from './routes/personalization.routes.js';
+import outreachRoutes from './routes/outreach.routes.js';
+import integrationsRoutes from './routes/integrations.routes.js';
+import approvalRoutes from './routes/approval.routes.js';
+import campaignRoutes from './routes/campaign.routes.js';
+import followUpRoutes from './routes/follow-up.routes.js';
+import analyticsRoutes from './routes/analytics.routes.js';
+import settingsRoutes from './routes/settings.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 const app = express();
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdn.jsdelivr.net'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", 'https://cdn.jsdelivr.net'],
+      },
+    },
+  })
+);
 app.use(cors({ origin: config.corsOrigin, credentials: true }));
 app.use(morgan('dev'));
 app.use(express.json());
 
-app.use('/api', healthRoutes);
-app.use('/api', leadRoutes);
-app.use('/api', discoveryRoutes);
-app.use('/api', templateRoutes);
+// ── Register route modules with error logging ────────────────
+const routeModules = [
+  { path: '/', router: docsRoutes, name: 'docs (landing + swagger)' },
+  { path: '/api', router: healthRoutes, name: 'health' },
+  { path: '/api', router: leadRoutes, name: 'leads' },
+  { path: '/api', router: discoveryRoutes, name: 'discovery' },
+  { path: '/api', router: templateRoutes, name: 'templates' },
+  { path: '/api', router: messageRoutes, name: 'messages' },
+  { path: '/api/personalization', router: personalizationRoutes, name: 'personalization' },
+  { path: '/api', router: integrationsRoutes, name: 'integrations' },
+  { path: '/api', router: outreachRoutes, name: 'outreach & gmail' },
+  { path: '/api', router: approvalRoutes, name: 'approvals' },
+  { path: '/api', router: campaignRoutes, name: 'campaigns' },
+  { path: '/api', router: followUpRoutes, name: 'follow-ups' },
+  { path: '/api', router: analyticsRoutes, name: 'analytics' },
+  { path: '/api', router: settingsRoutes, name: 'app-settings' },
+];
+
+for (const route of routeModules) {
+  try {
+    app.use(route.path, route.router);
+    console.log(`  ✅ Route loaded: ${route.name}`);
+  } catch (err: any) {
+    console.error(`  ❌ Failed to load route [${route.name}]: ${err.message}`);
+    console.error(`     Stack: ${err.stack}`);
+  }
+}
 
 app.use(notFoundHandler);
 app.use(errorHandler);
