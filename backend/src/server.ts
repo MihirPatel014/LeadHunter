@@ -1,5 +1,5 @@
 import app from './app.js';
-import { config } from './config/env.js';
+import { config } from './config/env.js'; // OpenWA configured
 import { FollowUpSchedulerService } from './services/follow-up-scheduler.service.js';
 import { appSettingsService } from './services/app-settings.service.js';
 import { loadGmailCredentialsFromDB } from './services/gmail.service.js';

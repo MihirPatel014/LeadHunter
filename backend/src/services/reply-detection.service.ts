@@ -222,4 +222,128 @@ export class ReplyDetectionService {
 
     return reply;
   }
+
+  /**
+   * Normalize a phone number to bare digits for robust matching across formats
+   */
+  normalizePhoneNumber(raw: string): string {
+    if (!raw) return '';
+    // Strip whatsapp suffix if present
+    const cleaned = raw.replace(/@c\.us|@s\.whatsapp\.net|@g\.us|@newsletter/gi, '');
+    // Keep only digits
+    return cleaned.replace(/[^\d]/g, '');
+  }
+
+  /**
+   * Process an inbound WhatsApp reply received via OpenWA webhook
+   */
+  async processWhatsAppInboundReply(input: {
+    senderPhone: string;
+    body: string;
+    messageId?: string;
+    pushName?: string;
+    timestamp?: number | string;
+    sessionId?: string;
+  }) {
+    const rawPhone = input.senderPhone;
+    const digitsOnly = this.normalizePhoneNumber(rawPhone);
+    const last10Digits = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
+
+    // 1. Try to find a matching lead by phone
+    // We check leads whose phone contains the last 10 digits
+    const potentialLeads = await prisma.lead.findMany({
+      where: {
+        phone: { not: null },
+      },
+      take: 200,
+    });
+
+    let matchedLead = potentialLeads.find((lead) => {
+      if (!lead.phone) return false;
+      const leadDigits = this.normalizePhoneNumber(lead.phone);
+      return (
+        leadDigits === digitsOnly ||
+        (last10Digits.length >= 8 && leadDigits.endsWith(last10Digits)) ||
+        (leadDigits.length >= 8 && digitsOnly.endsWith(leadDigits.slice(-10)))
+      );
+    });
+
+    // 2. If lead not found directly by phone, check SentMessage for WhatsApp outreach
+    let matchedSentMessage = null;
+    if (matchedLead) {
+      matchedSentMessage = await prisma.sentMessage.findFirst({
+        where: {
+          leadId: matchedLead.id,
+          channel: 'WHATSAPP',
+          status: 'SENT',
+        },
+        orderBy: { sentAt: 'desc' },
+      });
+    } else {
+      // Search SentMessages by recipient containing digits
+      const recentSent = await prisma.sentMessage.findMany({
+        where: { channel: 'WHATSAPP', status: 'SENT' },
+        orderBy: { sentAt: 'desc' },
+        take: 100,
+      });
+
+      matchedSentMessage = recentSent.find((msg) => {
+        const rDigits = this.normalizePhoneNumber(msg.recipient);
+        return rDigits === digitsOnly || (last10Digits.length >= 8 && rDigits.endsWith(last10Digits));
+      }) || null;
+
+      if (matchedSentMessage?.leadId) {
+        matchedLead = (await prisma.lead.findUnique({
+          where: { id: matchedSentMessage.leadId },
+        })) || undefined;
+      }
+    }
+
+    const externalId = input.messageId || `wa_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const existing = await this.replyRepo.findByMessageId(externalId);
+    if (existing) {
+      return { duplicate: true, reply: existing };
+    }
+
+    const replyDate = input.timestamp
+      ? new Date(typeof input.timestamp === 'number' ? input.timestamp * 1000 : input.timestamp)
+      : new Date();
+
+    const senderDisplay = input.pushName
+      ? `${input.pushName} (${digitsOnly || rawPhone})`
+      : digitsOnly || rawPhone;
+
+    const threadId = matchedSentMessage?.threadId || `wa_${digitsOnly || rawPhone}`;
+
+    const reply = await this.replyRepo.create({
+      leadId: matchedLead?.id,
+      sentMessageId: matchedSentMessage?.id,
+      threadId,
+      messageId: externalId,
+      sender: senderDisplay,
+      subject: 'WhatsApp Reply',
+      body: input.body || '(No text content / media received)',
+      replyAt: replyDate,
+    });
+
+    // Update Lead state to REPLIED and stop scheduled follow-ups
+    if (matchedLead) {
+      await prisma.lead.update({
+        where: { id: matchedLead.id },
+        data: {
+          status: 'REPLIED',
+          nextFollowUpAt: null,
+          lastContactedAt: new Date(),
+        },
+      });
+    }
+
+    return {
+      duplicate: false,
+      reply,
+      matchedLeadId: matchedLead?.id,
+      leadUpdated: Boolean(matchedLead),
+    };
+  }
 }
+

@@ -8,11 +8,13 @@ import {
   Megaphone,
   CheckCircle2,
   MessageSquare,
+  Inbox,
   Clock,
   BarChart3,
   Plug,
   Settings,
   Sparkles,
+  Terminal,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -27,6 +29,7 @@ const navItems = [
   { name: 'Campaigns', path: '/campaigns', icon: Megaphone },
   { name: 'Approvals', path: '/approvals', icon: CheckCircle2 },
   { name: 'Messages', path: '/messages', icon: MessageSquare },
+  { name: 'Replies', path: '/replies', icon: Inbox },
   { name: 'Follow-ups', path: '/follow-ups', icon: Clock },
   { name: 'Analytics', path: '/analytics', icon: BarChart3 },
 ];
@@ -34,6 +37,7 @@ const navItems = [
 const secondaryItems = [
   { name: 'Integrations', path: '/integrations', icon: Plug },
   { name: 'Settings', path: '/settings', icon: Settings },
+  { name: 'Logs', path: '/logs', icon: Terminal },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {

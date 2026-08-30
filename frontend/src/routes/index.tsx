@@ -16,6 +16,7 @@ import { FollowUpsPage } from '../pages/FollowUpsPage';
 import { AnalyticsPage } from '../pages/AnalyticsPage';
 import { IntegrationsPage } from '../pages/IntegrationsPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { LogsPage } from '../pages/LogsPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 
 export const AppRoutes: React.FC = () => {
@@ -34,11 +35,13 @@ export const AppRoutes: React.FC = () => {
         <Route path="campaigns/:id" element={<CampaignFormPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="messages" element={<MessagesPage />} />
+        <Route path="replies" element={<RepliesPage />} />
         <Route path="messages/replies" element={<RepliesPage />} />
         <Route path="follow-ups" element={<FollowUpsPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="logs" element={<LogsPage />} />
         <Route
           path="*"
           element={

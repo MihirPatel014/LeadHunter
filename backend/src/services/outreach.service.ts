@@ -47,20 +47,10 @@ export class OutreachService {
 
   /**
    * Returns the active email provider.
-   * If Gmail credentials exist, uses GmailProvider; otherwise falls back to MockEmailProvider.
+   * Priority: GmailProvider (OAuth) → SmtpProvider (App Password) → MockEmailProvider.
    */
   private getEmailProvider(): EmailProvider {
-    // 1. Try SMTP Provider first if configured
-    const smtpProvider = new SmtpProvider({
-      user: config.smtpUser,
-      pass: config.smtpPass,
-    });
-
-    if (smtpProvider.isConfigured()) {
-      return smtpProvider;
-    }
-
-    // 2. Try Gmail OAuth Provider
+    // 1. Try Gmail OAuth first
     const creds = this.gmailService.getCredentials();
     const gmailProvider = new GmailProvider({
       clientId: creds.clientId,
@@ -72,7 +62,18 @@ export class OutreachService {
       return gmailProvider;
     }
 
-    // 3. Fallback to Mock
+    // 2. Try SMTP (App Password) as fallback
+    if (config.smtpUser && config.smtpPass) {
+      const smtpProvider = new SmtpProvider({
+        user: config.smtpUser,
+        pass: config.smtpPass,
+      });
+      if (smtpProvider.isConfigured()) {
+        return smtpProvider;
+      }
+    }
+
+    // 3. Final fallback: mock provider (logs to console but doesn't send)
     return new MockEmailProvider();
   }
 
@@ -154,18 +155,16 @@ export class OutreachService {
   /**
    * Backend-controlled email dispatch.
    * Logs dispatch to SentMessage database table and updates lead status to CONTACTED.
+   * Automatically falls back to SMTP if Gmail OAuth fails with token errors.
    */
   async sendEmail(payload: SendEmailPayload) {
     const { leadId, recipient, subject, body, isHtml } = payload;
-    const provider = this.getEmailProvider();
+    let provider = this.getEmailProvider();
+
+    const sendOptions = { to: recipient, subject, body, isHtml };
 
     try {
-      const result = await provider.sendEmail({
-        to: recipient,
-        subject,
-        body,
-        isHtml,
-      });
+      const result = await provider.sendEmail(sendOptions);
 
       // 1. Log sent message in DB
       const record = await this.sentMessageRepo.create({
@@ -196,6 +195,68 @@ export class OutreachService {
         sentMessage: record,
       };
     } catch (err: any) {
+      // Check if this is a Gmail OAuth token error — auto-fallback to SMTP
+      const isOAuthError = err.message &&
+        (err.message.includes('invalid_grant') ||
+         err.message.includes('Token has been expired') ||
+         err.message.includes('refresh') ||
+         err.message.includes('OAuth'));
+
+      if (isOAuthError && config.smtpUser && config.smtpPass && provider.providerName !== 'SMTP') {
+        console.log('[OutreachService] Gmail OAuth failed, falling back to SMTP...');
+        const smtpProvider = new SmtpProvider({
+          user: config.smtpUser,
+          pass: config.smtpPass,
+        });
+
+        if (smtpProvider.isConfigured()) {
+          try {
+            const smtpResult = await smtpProvider.sendEmail(sendOptions);
+
+            const record = await this.sentMessageRepo.create({
+              leadId,
+              recipient,
+              subject,
+              body,
+              channel: 'EMAIL',
+              provider: smtpResult.provider,
+              messageId: smtpResult.messageId,
+              threadId: smtpResult.threadId,
+              status: 'SENT',
+            });
+
+            if (leadId) {
+              try {
+                await this.leadRepo.update(leadId, { status: 'CONTACTED' });
+              } catch { /* Continue */ }
+            }
+
+            return {
+              success: true,
+              sentMessage: record,
+              fallback: 'SMTP (Gmail OAuth token expired, used App Password)',
+            };
+          } catch (smtpErr: any) {
+            // Both providers failed — record SMTP failure
+            const record = await this.sentMessageRepo.create({
+              leadId,
+              recipient,
+              subject,
+              body,
+              channel: 'EMAIL',
+              provider: 'SMTP',
+              status: 'FAILED',
+              errorMessage: smtpErr.message,
+            });
+
+            const error: any = new Error(`Failed to send email via both Gmail and SMTP: ${smtpErr.message}`);
+            error.statusCode = 502;
+            error.details = { recordId: record.id, gmailError: err.message };
+            throw error;
+          }
+        }
+      }
+
       // Record failed dispatch
       const record = await this.sentMessageRepo.create({
         leadId,

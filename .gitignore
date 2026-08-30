@@ -13,3 +13,9 @@ prisma/*.db
 .pnpm-store/
 *.flag
 docs/client_secret*.json
+scratch/
+docs/
+data/
+"Linkedin Mcp"/
+Linkedin Mcp/
+

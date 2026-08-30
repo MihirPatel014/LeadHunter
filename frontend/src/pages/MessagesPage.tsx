@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { leadService } from '../services/leadService';
 import { templateService } from '../services/templateService';
-import { messageService } from '../services/messageService';
+import { messageService, SendEmailPayload, SendWhatsAppPayload } from '../services/messageService';
 import { personalizationService } from '../services/personalizationService';
 import { MessagePreviewResponse } from '../types/message';
 import { PersonalizationResponse } from '../types/personalization';
@@ -24,6 +24,10 @@ import {
   AlertTriangle,
   Key,
   Settings,
+  Rocket,
+  PartyPopper,
+  AlertCircle,
+  Phone,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -38,6 +42,8 @@ export const MessagesPage: React.FC = () => {
   const [quickApiKey, setQuickApiKey] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'personalized' | 'base' | 'comparison'>('personalized');
   const [copied, setCopied] = useState(false);
+  const [showSendConfirm, setShowSendConfirm] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState(false);
 
   // Fetch AI Status
   const { data: aiStatus } = useQuery({
@@ -94,9 +100,53 @@ export const MessagesPage: React.FC = () => {
     },
   });
 
+  // Send Message Mutation
+  const sendMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedLead) throw new Error('No lead selected');
+
+      // Determine which message content to send
+      const subject = aiData
+        ? (activeTab === 'base' ? aiData.baseRendered.subject : aiData.personalized.subject) || ''
+        : standardData?.rendered.subject || '';
+      const body = aiData
+        ? (activeTab === 'base' ? aiData.baseRendered.body : aiData.personalized.body)
+        : standardData?.rendered.body || '';
+      const channel = aiData?.template.channel || standardData?.template.channel;
+
+      if (channel === 'EMAIL') {
+        if (!selectedLead.email) throw new Error('This lead has no email address. Please add one in the Leads page first.');
+        const payload: SendEmailPayload = {
+          leadId: selectedLead.id,
+          recipient: selectedLead.email,
+          subject: subject || `Outreach to ${selectedLead.businessName}`,
+          body,
+        };
+        return messageService.sendEmail(payload);
+      } else {
+        if (!selectedLead.phone) throw new Error('This lead has no phone number. Please add one in the Leads page first.');
+        const payload: SendWhatsAppPayload = {
+          leadId: selectedLead.id,
+          recipient: selectedLead.phone,
+          body,
+        };
+        return messageService.sendWhatsApp(payload);
+      }
+    },
+    onSuccess: () => {
+      setSendSuccess(true);
+      setShowSendConfirm(false);
+      setTimeout(() => setSendSuccess(false), 5000);
+    },
+    onError: () => {
+      setShowSendConfirm(false);
+    },
+  });
+
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLeadId || !selectedTemplateId) return;
+    setSendSuccess(false);
 
     if (enableAI) {
       aiPersonalizationMutation.mutate();
@@ -120,6 +170,12 @@ export const MessagesPage: React.FC = () => {
   const isPending = enableAI ? aiPersonalizationMutation.isPending : standardPreviewMutation.isPending;
   const isError = enableAI ? aiPersonalizationMutation.isError : standardPreviewMutation.isError;
   const error = enableAI ? (aiPersonalizationMutation.error as Error) : (standardPreviewMutation.error as Error);
+  const hasPreview = Boolean(aiData || standardData);
+  const currentChannel = aiData?.template.channel || standardData?.template.channel;
+  const canSend = hasPreview && selectedLead && (
+    (currentChannel === 'EMAIL' && selectedLead.email) ||
+    (currentChannel === 'WHATSAPP' && selectedLead.phone)
+  );
 
   const currentProviderDetails = aiStatus?.availableProviders?.find((p) => p.id === selectedProvider);
 
@@ -504,6 +560,29 @@ export const MessagesPage: React.FC = () => {
               )}
             </div>
 
+            {/* Send Success Banner */}
+            {sendSuccess && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mx-5 mt-3 flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-400"
+              >
+                <PartyPopper className="w-5 h-5" />
+                <span className="font-medium">Message sent successfully!</span>
+                <span className="text-xs text-emerald-400/70">
+                  {currentChannel === 'EMAIL' ? `Email dispatched to ${selectedLead?.email}` : `WhatsApp sent to ${selectedLead?.phone}`}
+                </span>
+              </motion.div>
+            )}
+
+            {/* Send Error Banner */}
+            {sendMutation.isError && !sendSuccess && (
+              <div className="mx-5 mt-3 flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{(sendMutation.error as Error)?.message || 'Failed to send message'}</span>
+              </div>
+            )}
+
             {/* Output Body */}
             <div className="p-6 flex-1 flex flex-col justify-center">
               {isPending ? (
@@ -664,6 +743,7 @@ export const MessagesPage: React.FC = () => {
                     </span>
                   </div>
                 </div>
+
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground space-y-3">
                   <div className="w-12 h-12 rounded-full bg-muted/40 flex items-center justify-center text-muted-foreground">
@@ -675,6 +755,71 @@ export const MessagesPage: React.FC = () => {
                       Choose a target lead and outreach template on the left, then click &quot;Generate AI Personalized Message&quot;.
                     </p>
                   </div>
+                </div>
+              )}
+
+              {/* ─── Send Message Button (shown when preview is available) ─── */}
+              {hasPreview && !sendSuccess && (
+                <div className="border-t border-border px-6 py-4 mt-2">
+                  {!showSendConfirm ? (
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setShowSendConfirm(true)}
+                        disabled={!canSend || sendMutation.isPending}
+                        className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-5 rounded-lg shadow-sm transition-all text-sm"
+                      >
+                        <Rocket className="w-4 h-4" />
+                        {currentChannel === 'EMAIL' ? 'Send Email Now' : 'Send WhatsApp Now'}
+                      </button>
+                      {!canSend && hasPreview && (
+                        <div className="text-xs text-amber-400 flex items-center gap-1 max-w-[200px]">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          {currentChannel === 'EMAIL'
+                            ? 'Lead has no email address'
+                            : 'Lead has no phone number'}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-3"
+                    >
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-foreground">Confirm Send</p>
+                          <p className="mt-0.5">
+                            {currentChannel === 'EMAIL'
+                              ? <>This will send an email to <strong className="text-foreground">{selectedLead?.email}</strong> via Gmail.</>
+                              : <>This will send a WhatsApp message to <strong className="text-foreground">{selectedLead?.phone}</strong> via OpenWA.</>
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => sendMutation.mutate()}
+                          disabled={sendMutation.isPending}
+                          className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-70 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all text-sm"
+                        >
+                          {sendMutation.isPending ? (
+                            <><RefreshCw className="w-4 h-4 animate-spin" /> Sending...</>
+                          ) : (
+                            <><Send className="w-4 h-4" /> Yes, Send It</>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setShowSendConfirm(false)}
+                          disabled={sendMutation.isPending}
+                          className="px-4 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               )}
             </div>

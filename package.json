@@ -1,0 +1,18 @@
+{
+  "name": "leadhunter-monorepo",
+  "version": "1.0.0",
+  "description": "LeadHunter AI Outreach Platform + OpenWA Monorepo Launcher",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"backend,frontend,openwa\" -c \"blue.bold,cyan.bold,green.bold\" \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:openwa\"",
+    "dev:app": "concurrently -n \"backend,frontend\" -c \"blue.bold,cyan.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:openwa": "cd OpenWA && npm run start:dev",
+    "build": "concurrently \"cd backend && npm run build\" \"cd frontend && npm run build\"",
+    "studio": "cd backend && npx prisma studio"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

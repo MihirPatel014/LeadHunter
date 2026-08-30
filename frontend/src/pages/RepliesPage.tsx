@@ -41,6 +41,10 @@ const SAMPLE_REPLIES = [
     subject: 'Re: Partnership inquiry',
     body: 'Thanks for getting in touch. Please email our office manager at manager@business.com with more details.',
   },
+  {
+    subject: 'WhatsApp Reply',
+    body: 'Yes, please share more details and your portfolio on WhatsApp! What are your typical turnaround times?',
+  },
 ];
 
 export const RepliesPage: React.FC = () => {
@@ -302,6 +306,17 @@ export const RepliesPage: React.FC = () => {
                     <span className="px-2.5 py-0.5 text-[11px] font-semibold rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
                       REPLIED
                     </span>
+                    {(reply.subject?.toLowerCase().includes('whatsapp') || reply.threadId?.startsWith('wa_')) ? (
+                      <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-600/10 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                        <MessageSquare className="w-3 h-3 text-emerald-400" />
+                        WhatsApp
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/30 flex items-center gap-1">
+                        <MailCheck className="w-3 h-3 text-blue-400" />
+                        Email
+                      </span>
+                    )}
                     {reply.lead ? (
                       <Link
                         to={`/leads/${reply.lead.id}`}

@@ -302,6 +302,52 @@ export class WhatsAppProvider {
   }
 
   // ────────────────────────────────────────────────────────────────
+  // Webhook Management
+  // ────────────────────────────────────────────────────────────────
+
+  async listWebhooks(sessionId?: string): Promise<any[]> {
+    this.ensureGatewayConfigured();
+    const sid = sessionId || this.sessionId;
+    return this.request<any[]>(`/sessions/${encodeURIComponent(sid)}/webhooks`);
+  }
+
+  async registerWebhook(options: {
+    url: string;
+    events?: string[];
+    secret?: string;
+    sessionId?: string;
+  }): Promise<any> {
+    this.ensureGatewayConfigured();
+    const sid = options.sessionId || this.sessionId;
+    const payload = {
+      url: options.url,
+      events: options.events || ['message.received', 'session.status'],
+      secret: options.secret,
+    };
+    return this.request<any>(`/sessions/${encodeURIComponent(sid)}/webhooks`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteWebhook(webhookId: string, sessionId?: string): Promise<void> {
+    this.ensureGatewayConfigured();
+    const sid = sessionId || this.sessionId;
+    return this.request<void>(`/sessions/${encodeURIComponent(sid)}/webhooks/${encodeURIComponent(webhookId)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async testWebhook(webhookId: string, sessionId?: string): Promise<any> {
+    this.ensureGatewayConfigured();
+    const sid = sessionId || this.sessionId;
+    return this.request<any>(`/sessions/${encodeURIComponent(sid)}/webhooks/${encodeURIComponent(webhookId)}/test`, {
+      method: 'POST',
+    });
+  }
+
+
+  // ────────────────────────────────────────────────────────────────
   // Private Helpers
   // ────────────────────────────────────────────────────────────────
 
@@ -332,7 +378,7 @@ export class WhatsAppProvider {
         'Content-Type': 'application/json',
         ...(init?.headers || {}),
       },
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(120_000),
     });
 
     if (!response.ok) {
@@ -374,7 +420,21 @@ export class WhatsAppProvider {
       return trimmed;
     }
 
-    const digits = trimmed.replace(/[^\d]/g, '');
+    let digits = trimmed.replace(/[^\d]/g, '');
+
+    // Handle Indian phone numbers:
+    // - "096628 60399" → "09662860399" → strip leading 0 → "9662860399" → add 91 → "919662860399"
+    // - "+91 96628 60399" → "919662860399" (already correct)
+    // - "0261 259 8555" → "02612598555" → strip leading 0 → "2612598555" → add 91 → "912612598555"
+    if (digits.startsWith('0')) {
+      digits = digits.slice(1);
+    }
+
+    // If the number is 10 digits (Indian local), prepend country code 91
+    if (digits.length === 10) {
+      digits = `91${digits}`;
+    }
+
     return `${digits}@c.us`;
   }
 

@@ -17,6 +17,9 @@ import campaignRoutes from './routes/campaign.routes.js';
 import followUpRoutes from './routes/follow-up.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
+import webhookRoutes from './routes/webhook.routes.js';
+import logsRoutes from './routes/logs.routes.js';
+import { requestLoggerMiddleware } from './middleware/logger.middleware.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -38,6 +41,7 @@ app.use(
 app.use(cors({ origin: config.corsOrigin, credentials: true }));
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(requestLoggerMiddleware);
 
 // ── Register route modules with error logging ────────────────
 const routeModules = [
@@ -55,6 +59,8 @@ const routeModules = [
   { path: '/api', router: followUpRoutes, name: 'follow-ups' },
   { path: '/api', router: analyticsRoutes, name: 'analytics' },
   { path: '/api', router: settingsRoutes, name: 'app-settings' },
+  { path: '/api', router: webhookRoutes, name: 'webhooks' },
+  { path: '/api', router: logsRoutes, name: 'logs' },
 ];
 
 for (const route of routeModules) {
