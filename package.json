@@ -9,7 +9,7 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:openwa": "cd OpenWA && npm run start:dev",
-    "build": "concurrently \"cd backend && npm run build\" \"cd frontend && npm run build\"",
+    "build": "cd backend && npx prisma generate && npm run build && cd ../frontend && npm run build",
     "studio": "cd backend && npx prisma studio"
   },
   "devDependencies": {
