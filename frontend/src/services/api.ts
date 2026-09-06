@@ -15,21 +15,42 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     console.debug(`[HTTP Request] ${method} ${url}`, options.body || '');
   }
 
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
+  } catch (networkError: any) {
+    console.error(`[API Network Failure] ${method} ${url}:`, networkError);
+    const err: any = new Error(
+      `Cannot connect to API backend at ${baseUrl || window.location.origin}. Please check your backend deployment status.`
+    );
+    err.status = 0;
+    err.originalError = networkError;
+    throw err;
+  }
 
-  const data = await response.json();
+  let data: any;
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    data = await response.json();
+  } else {
+    const rawText = await response.text();
+    console.warn(`[API Non-JSON Response] ${method} ${url} status ${response.status}:`, rawText.slice(0, 300));
+    data = {
+      success: response.ok,
+      message: response.ok ? rawText : `Backend returned non-JSON error (Status ${response.status})`,
+      error: !response.ok ? `Server error: HTTP ${response.status}` : undefined,
+    };
+  }
 
   if (!response.ok) {
-    const errorMessage = data.error || data.message || `Request failed with status ${response.status}`;
-    if (import.meta.env.DEV) {
-      console.error(`[HTTP Error ${response.status}] ${method} ${endpoint}:`, errorMessage);
-    }
+    const errorMessage = data?.error || data?.message || `Request failed with status ${response.status}`;
+    console.error(`[HTTP Error ${response.status}] ${method} ${endpoint}:`, errorMessage);
 
     // Automatically report client-side API errors to backend log buffer (skip /api/logs to prevent recursion)
     if (!endpoint.includes('/api/logs')) {
@@ -41,7 +62,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
             level: 'ERROR',
             category: 'CLIENT',
             message: `API Error ${response.status} on ${method} ${endpoint}: ${errorMessage}`,
-            meta: { endpoint, method, status: response.status, details: data.details },
+            meta: { endpoint, method, status: response.status, details: data?.details },
           }),
         }).catch(() => {});
       } catch {
@@ -51,7 +72,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
 
     const error: any = new Error(errorMessage);
     error.status = response.status;
-    error.details = data.details;
+    error.details = data?.details;
     throw error;
   }
 

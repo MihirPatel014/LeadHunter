@@ -19,6 +19,8 @@ import { SettingsPage } from '../pages/SettingsPage';
 import { LogsPage } from '../pages/LogsPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 
+import { NotFoundPage } from '../pages/NotFoundPage';
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -42,15 +44,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="logs" element={<LogsPage />} />
-        <Route
-          path="*"
-          element={
-            <PlaceholderPage
-              title="404 - Page Not Found"
-              description="The requested section does not exist."
-            />
-          }
-        />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Menu, Search, Bell, Activity, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { fetchApi } from '../services/api';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -11,8 +12,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    fetch('/api/health')
-      .then((res) => res.json())
+    fetchApi<{ message?: string }>('/api/health')
       .then((data) => {
         if (data.success) {
           setApiStatus('healthy');
@@ -20,7 +20,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           setApiStatus('error');
         }
       })
-      .catch(() => setApiStatus('error'));
+      .catch((err) => {
+        console.warn('[Header] Health check failed:', err.message);
+        setApiStatus('error');
+      });
   }, []);
 
   return (
