@@ -232,9 +232,21 @@ router.get('/api-docs', (_req: Request, res: Response) => {
 </html>`);
 });
 
-// Serve raw OpenAPI JSON spec
-router.get('/api-docs/openapi.json', (_req: Request, res: Response) => {
-  res.json(openApiSpec);
+// Serve raw OpenAPI JSON spec with dynamic server URL based on current host
+router.get('/api-docs/openapi.json', (req: Request, res: Response) => {
+  const host = req.get('host') || 'localhost:5000';
+  const protocol = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+  const currentOrigin = `${protocol}://${host}`;
+
+  const dynamicSpec = {
+    ...openApiSpec,
+    servers: [
+      { url: currentOrigin, description: 'Current server' },
+      { url: 'http://localhost:5000', description: 'Local development server' },
+    ],
+  };
+
+  res.json(dynamicSpec);
 });
 
 export default router;
