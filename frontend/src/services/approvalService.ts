@@ -43,4 +43,21 @@ export const approvalService = {
     });
     return res.data!;
   },
+
+  async bulkApprove(ids: number[]): Promise<{ approved: number; failed: number; errors: Array<{ id: number; error: string }> }> {
+    const res = await fetchApi<{ approved: number; failed: number; errors: Array<{ id: number; error: string }> }>('/api/approvals/bulk-approve', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+    return res.data!;
+  },
+
+  async bulkReject(ids: number[], note?: string): Promise<{ rejected: number }> {
+    const res = await fetchApi<{ rejected: number }>('/api/approvals/bulk-reject', {
+      method: 'POST',
+      body: JSON.stringify({ ids, note }),
+    });
+    return res.data!;
+  },
 };
+

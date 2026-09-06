@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -15,17 +15,30 @@ import {
   FileText,
   AlertCircle,
   Sparkles,
+  Users,
+  Search,
+  CheckSquare,
+  Square,
+  Filter,
+  CheckCircle2,
+  Calendar,
+  Clock,
+  Dumbbell,
+  FileSpreadsheet,
+  Globe,
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { motion } from 'motion/react';
 
 import { campaignService } from '../services/campaignService';
 import { templateService } from '../services/templateService';
+import { leadService } from '../services/leadService';
 import {
   CampaignChannel,
   CampaignStatus,
   CreateCampaignPayload,
 } from '../types/campaign';
+import { Lead } from '../types/lead';
 
 export const CampaignFormPage: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
@@ -33,13 +46,32 @@ export const CampaignFormPage: React.FC = () => {
   const campaignId = parseInt(id || '0', 10);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
+
+  // Navigation state passed from LeadsPage
+  const locationState = location.state as {
+    selectedLeadIds?: number[];
+    suggestedCategory?: string;
+    suggestedCity?: string;
+  } | null;
+
+  // Targeting Mode: 'specific' (handpicked / recent leads) vs 'filters' (dynamic criteria)
+  const [targetMode, setTargetMode] = useState<'specific' | 'filters'>('filters');
+  const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
+
+  // Lead Picker filter/search states
+  const [leadSearch, setLeadSearch] = useState('');
+  const [leadCategoryFilter, setLeadCategoryFilter] = useState('');
+  const [leadSourceFilter, setLeadSourceFilter] = useState('');
+  const [leadRecencyFilter, setLeadRecencyFilter] = useState<'ALL' | '24H' | '7D' | '30D'>('ALL');
 
   // Form State
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [city, setCity] = useState('');
   const [category, setCategory] = useState('');
+  const [leadSource, setLeadSource] = useState('');
   const [templateId, setTemplateId] = useState<number | ''>('');
   const [channel, setChannel] = useState<CampaignChannel>('EMAIL');
   const [dailyLimit, setDailyLimit] = useState<number>(20);
@@ -58,16 +90,89 @@ export const CampaignFormPage: React.FC = () => {
     enabled: !isNew && !isNaN(campaignId) && campaignId > 0,
   });
 
+  // Fetch leads for the interactive lead picker (up to 100 recent leads)
+  const { data: leadsData, isLoading: isLoadingLeads } = useQuery({
+    queryKey: ['leads-for-campaign-picker', leadCategoryFilter, leadSourceFilter],
+    queryFn: () =>
+      leadService.getLeads({
+        page: 1,
+        limit: 100,
+        category: leadCategoryFilter || undefined,
+        source: leadSourceFilter || undefined,
+      }),
+  });
+
+  const availableLeads = useMemo(() => leadsData?.leads || [], [leadsData]);
+
+  // Filter leads locally by search term and recency
+  const filteredLeads = useMemo(() => {
+    let result = availableLeads;
+
+    if (leadSearch.trim()) {
+      const q = leadSearch.toLowerCase();
+      result = result.filter(
+        (l) =>
+          l.businessName.toLowerCase().includes(q) ||
+          (l.city && l.city.toLowerCase().includes(q)) ||
+          (l.category && l.category.toLowerCase().includes(q)) ||
+          (l.email && l.email.toLowerCase().includes(q)) ||
+          (l.phone && l.phone.includes(q))
+      );
+    }
+
+    if (leadRecencyFilter !== 'ALL') {
+      const now = new Date().getTime();
+      const hoursMap = {
+        '24H': 24,
+        '7D': 7 * 24,
+        '30D': 30 * 24,
+      };
+      const maxAgeMs = hoursMap[leadRecencyFilter] * 60 * 60 * 1000;
+      result = result.filter((l) => {
+        const leadTime = new Date(l.createdAt).getTime();
+        return now - leadTime <= maxAgeMs;
+      });
+    }
+
+    return result;
+  }, [availableLeads, leadSearch, leadRecencyFilter]);
+
+  // Handle passed location state from Leads table selection
+  useEffect(() => {
+    if (locationState?.selectedLeadIds && locationState.selectedLeadIds.length > 0) {
+      setSelectedLeadIds(locationState.selectedLeadIds);
+      setTargetMode('specific');
+      setDailyLimit(Math.max(20, locationState.selectedLeadIds.length));
+
+      if (locationState.suggestedCategory) {
+        setCategory(locationState.suggestedCategory);
+        setName(`${locationState.suggestedCategory} Outreach - ${new Date().toLocaleDateString()}`);
+      } else {
+        setName(`Lead Outreach Campaign - ${new Date().toLocaleDateString()}`);
+      }
+
+      if (locationState.suggestedCity) {
+        setCity(locationState.suggestedCity);
+      }
+    }
+  }, [locationState]);
+
   useEffect(() => {
     if (existingCampaign) {
       setName(existingCampaign.name);
       setDescription(existingCampaign.description || '');
       setCity(existingCampaign.city || '');
       setCategory(existingCampaign.category || '');
+      setLeadSource(existingCampaign.leadSource || '');
       setTemplateId(existingCampaign.templateId);
       setChannel(existingCampaign.channel);
       setDailyLimit(existingCampaign.dailyLimit);
       setStatus(existingCampaign.status);
+
+      if (existingCampaign.leadIds && existingCampaign.leadIds.length > 0) {
+        setSelectedLeadIds(existingCampaign.leadIds);
+        setTargetMode('specific');
+      }
     }
   }, [existingCampaign]);
 
@@ -80,6 +185,23 @@ export const CampaignFormPage: React.FC = () => {
       }
     }
   }, [templates, channel, templateId]);
+
+  // Selection toggle helpers
+  const toggleLeadSelection = (leadId: number) => {
+    setSelectedLeadIds((prev) =>
+      prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId]
+    );
+  };
+
+  const selectAllFiltered = () => {
+    const filteredIds = filteredLeads.map((l) => l.id);
+    setSelectedLeadIds((prev) => Array.from(new Set([...prev, ...filteredIds])));
+  };
+
+  const deselectAllFiltered = () => {
+    const filteredIdSet = new Set(filteredLeads.map((l) => l.id));
+    setSelectedLeadIds((prev) => prev.filter((id) => !filteredIdSet.has(id)));
+  };
 
   // Save Mutation
   const saveMutation = useMutation({
@@ -112,11 +234,18 @@ export const CampaignFormPage: React.FC = () => {
       return;
     }
 
+    if (targetMode === 'specific' && selectedLeadIds.length === 0) {
+      toast.error('Please select at least one lead or switch to Demographic Filters');
+      return;
+    }
+
     saveMutation.mutate({
       name: name.trim(),
       description: description.trim() || undefined,
       city: city.trim() || undefined,
       category: category.trim() || undefined,
+      leadSource: leadSource.trim() || undefined,
+      leadIds: targetMode === 'specific' && selectedLeadIds.length > 0 ? selectedLeadIds : undefined,
       templateId: Number(templateId),
       channel,
       dailyLimit: Number(dailyLimit) || 20,
@@ -139,7 +268,7 @@ export const CampaignFormPage: React.FC = () => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="space-y-6 max-w-4xl mx-auto pb-12"
+      className="space-y-6 max-w-5xl mx-auto pb-12"
     >
       <Toaster position="top-right" theme="system" />
 
@@ -158,7 +287,7 @@ export const CampaignFormPage: React.FC = () => {
               {isNew ? 'Create New Campaign' : `Edit Campaign: ${existingCampaign?.name || ''}`}
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Specify lead audience filters, outreach channel, message template, and batch sending limits.
+              Target recently uploaded/captured leads or filter by industry demographic to generate personalized outreach.
             </p>
           </div>
         </div>
@@ -186,7 +315,7 @@ export const CampaignFormPage: React.FC = () => {
       </div>
 
       <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Main Campaign Details */}
+        {/* Left Column: Main Campaign Details & Audience Selection */}
         <div className="lg:col-span-2 space-y-6">
           {/* General Information Card */}
           <div className="bg-card border border-border rounded-xl p-5 space-y-4">
@@ -202,7 +331,7 @@ export const CampaignFormPage: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Surat Hair Salons - Cold Email Wave 1"
+                  placeholder="e.g. Gym Owners Outreach - Cold Email Wave 1"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3 py-2 bg-background border border-border rounded-md text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -215,7 +344,7 @@ export const CampaignFormPage: React.FC = () => {
                   Description
                 </label>
                 <textarea
-                  placeholder="Internal notes about target audience or offer..."
+                  placeholder="Internal notes about target audience or offer (e.g. Targeting local gym & fitness studio owners)..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
@@ -225,45 +354,319 @@ export const CampaignFormPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Lead Targeting Criteria Card */}
+          {/* Lead Targeting Mode Selection Card */}
           <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Tag className="w-4 h-4 text-primary" />
-              Target Demographics & Filters
-            </h3>
-            <p className="text-[11px] text-muted-foreground">
-              When triggered, this campaign automatically searches your lead database for contacts matching these criteria.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
               <div>
-                <label className="block text-xs font-medium text-foreground mb-1 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-primary" />
-                  Target City
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Surat (or leave blank for all)"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  Target Audience Selection
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Choose whether to pick specific/recent leads or use demographic matching filters.
+                </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1 flex items-center gap-1.5">
-                  <Tag className="w-3.5 h-3.5 text-primary" />
-                  Business Category
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Salon, Cafe, Dentist (or blank for all)"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-md text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
+              {/* Mode Toggle Pills */}
+              <div className="flex items-center p-1 bg-secondary/50 rounded-lg border border-border self-start">
+                <button
+                  type="button"
+                  onClick={() => setTargetMode('specific')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${
+                    targetMode === 'specific'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  Select Specific Leads
+                  {selectedLeadIds.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 text-[10px] rounded-full bg-white/20">
+                      {selectedLeadIds.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetMode('filters')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${
+                    targetMode === 'filters'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  Dynamic Filters
+                </button>
               </div>
             </div>
+
+            {/* Mode A: Interactive Specific / Recent Leads Picker */}
+            {targetMode === 'specific' ? (
+              <div className="space-y-4 pt-1">
+                {/* Quick Preset Filters */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-primary" /> Quick Recency:
+                  </span>
+                  {(
+                    [
+                      { label: 'All Leads', val: 'ALL' },
+                      { label: 'Added < 24 Hours', val: '24H' },
+                      { label: 'Added Last 7 Days', val: '7D' },
+                      { label: 'Added Last 30 Days', val: '30D' },
+                    ] as const
+                  ).map((item) => (
+                    <button
+                      key={item.val}
+                      type="button"
+                      onClick={() => setLeadRecencyFilter(item.val)}
+                      className={`px-2.5 py-1 text-[11px] rounded-md border transition-all ${
+                        leadRecencyFilter === item.val
+                          ? 'border-primary bg-primary/10 text-primary font-semibold'
+                          : 'border-border bg-background text-muted-foreground hover:bg-secondary'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+
+                  <div className="h-4 w-px bg-border mx-1" />
+
+                  {/* Gym Preset button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLeadCategoryFilter(leadCategoryFilter === 'Gym' ? '' : 'Gym');
+                    }}
+                    className={`px-2.5 py-1 text-[11px] rounded-md border transition-all flex items-center gap-1 ${
+                      leadCategoryFilter === 'Gym'
+                        ? 'border-amber-500 bg-amber-500/10 text-amber-400 font-semibold'
+                        : 'border-border bg-background text-muted-foreground hover:bg-secondary'
+                    }`}
+                  >
+                    <Dumbbell className="w-3 h-3 text-amber-400" />
+                    Gyms / Fitness
+                  </button>
+
+                  {/* CSV Upload Preset button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLeadSourceFilter(leadSourceFilter === 'CSV_IMPORT' ? '' : 'CSV_IMPORT');
+                    }}
+                    className={`px-2.5 py-1 text-[11px] rounded-md border transition-all flex items-center gap-1 ${
+                      leadSourceFilter === 'CSV_IMPORT'
+                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-semibold'
+                        : 'border-border bg-background text-muted-foreground hover:bg-secondary'
+                    }`}
+                  >
+                    <FileSpreadsheet className="w-3 h-3 text-emerald-400" />
+                    CSV Imports
+                  </button>
+                </div>
+
+                {/* Lead Search & Multi-select Toolbar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search recent leads by name, city, email..."
+                      value={leadSearch}
+                      onChange={(e) => setLeadSearch(e.target.value)}
+                      className="w-full bg-background border border-border rounded-md pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={selectAllFiltered}
+                      className="px-2.5 py-1 text-[11px] font-medium rounded-md border border-border bg-secondary/50 text-foreground hover:bg-secondary transition-colors"
+                    >
+                      Select All Filtered ({filteredLeads.length})
+                    </button>
+                    {selectedLeadIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={deselectAllFiltered}
+                        className="px-2.5 py-1 text-[11px] font-medium rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Deselect Filtered
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Selected Leads Banner */}
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 flex items-center justify-between text-xs text-foreground">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>
+                      <strong>{selectedLeadIds.length}</strong> lead(s) selected for this campaign
+                    </span>
+                  </div>
+                  {selectedLeadIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLeadIds([])}
+                      className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                    >
+                      Clear all selections
+                    </button>
+                  )}
+                </div>
+
+                {/* Leads Scrollable List Table */}
+                <div className="border border-border rounded-lg overflow-hidden max-h-72 overflow-y-auto bg-background/50">
+                  {isLoadingLeads ? (
+                    <div className="flex items-center justify-center p-8 text-xs text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin mr-2 text-primary" />
+                      Loading recent leads...
+                    </div>
+                  ) : filteredLeads.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-muted-foreground">
+                      No leads match your filter criteria. Try adjusting the search or recency filter.
+                    </div>
+                  ) : (
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-secondary/40 border-b border-border text-[11px] text-muted-foreground sticky top-0">
+                        <tr>
+                          <th className="p-2.5 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={
+                                filteredLeads.length > 0 &&
+                                filteredLeads.every((l) => selectedLeadIds.includes(l.id))
+                              }
+                              onChange={(e) => {
+                                if (e.target.checked) selectAllFiltered();
+                                else deselectAllFiltered();
+                              }}
+                              className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                            />
+                          </th>
+                          <th className="p-2.5 font-medium">Business / Name</th>
+                          <th className="p-2.5 font-medium">Category</th>
+                          <th className="p-2.5 font-medium">City</th>
+                          <th className="p-2.5 font-medium">Contact</th>
+                          <th className="p-2.5 font-medium">Source / Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {filteredLeads.map((lead: Lead) => {
+                          const isSelected = selectedLeadIds.includes(lead.id);
+                          const dateAdded = new Date(lead.createdAt).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                          });
+
+                          return (
+                            <tr
+                              key={lead.id}
+                              onClick={() => toggleLeadSelection(lead.id)}
+                              className={`cursor-pointer transition-colors ${
+                                isSelected ? 'bg-primary/10' : 'hover:bg-secondary/30'
+                              }`}
+                            >
+                              <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleLeadSelection(lead.id)}
+                                  className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                                />
+                              </td>
+                              <td className="p-2.5 font-medium text-foreground">
+                                {lead.businessName}
+                              </td>
+                              <td className="p-2.5 text-muted-foreground">
+                                {lead.category ? (
+                                  <span className="px-1.5 py-0.5 rounded bg-secondary text-[10px] text-foreground">
+                                    {lead.category}
+                                  </span>
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
+                              <td className="p-2.5 text-muted-foreground">{lead.city || '—'}</td>
+                              <td className="p-2.5 text-muted-foreground">
+                                {channel === 'EMAIL' ? (
+                                  lead.email ? (
+                                    <span className="text-foreground">{lead.email}</span>
+                                  ) : (
+                                    <span className="text-rose-400 text-[10px]">No Email</span>
+                                  )
+                                ) : lead.phone ? (
+                                  <span className="text-foreground">{lead.phone}</span>
+                                ) : (
+                                  <span className="text-rose-400 text-[10px]">No Phone</span>
+                                )}
+                              </td>
+                              <td className="p-2.5 text-[11px] text-muted-foreground">
+                                <span className="opacity-75">{lead.source || 'MANUAL'}</span> ·{' '}
+                                <span>{dateAdded}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Mode B: Dynamic Demographic Filters */
+              <div className="space-y-4 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-primary" />
+                      Target City
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Surat (or leave blank for all)"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-md text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-primary" />
+                      Business Category
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Gym, Salon, Cafe, Dentist (or blank for all)"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-md text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-primary" />
+                    Lead Acquisition Source
+                  </label>
+                  <select
+                    value={leadSource}
+                    onChange={(e) => setLeadSource(e.target.value)}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">All Sources</option>
+                    <option value="CSV_IMPORT">CSV Uploads / Imports</option>
+                    <option value="GOOGLE_MAPS">Google Maps Discovery</option>
+                    <option value="MANUAL">Manually Added</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Template & Message Configuration */}
@@ -427,3 +830,4 @@ export const CampaignFormPage: React.FC = () => {
     </motion.div>
   );
 };
+

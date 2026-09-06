@@ -43,6 +43,7 @@ export interface LeadQueryParams {
   temperature?: TemperatureStatus;
   city?: string;
   category?: string;
+  source?: string;
   websiteStatus?: WebsiteStatus;
   websiteType?: string;
 }

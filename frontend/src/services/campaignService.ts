@@ -46,10 +46,12 @@ export const campaignService = {
     });
   },
 
-  run: async (id: number): Promise<CampaignRunResult> => {
+  run: async (id: number, leadIds?: number[]): Promise<CampaignRunResult> => {
     const res = await fetchApi<CampaignRunResult>(`/api/campaigns/${id}/run`, {
       method: 'POST',
+      body: leadIds && leadIds.length > 0 ? JSON.stringify({ leadIds }) : undefined,
     });
     return res.data!;
   },
 };
+

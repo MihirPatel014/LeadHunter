@@ -5,6 +5,8 @@ export const createCampaignSchema = z.object({
   description: z.string().max(1000).optional(),
   city: z.string().max(100).optional(),
   category: z.string().max(100).optional(),
+  leadSource: z.string().max(100).optional(),
+  leadIds: z.array(z.number().int().positive()).optional(),
   templateId: z.number().int().positive('Template ID must be a positive integer'),
   channel: z.enum(['EMAIL', 'WHATSAPP']).default('EMAIL'),
   dailyLimit: z.number().int().min(1).max(500).default(20),
@@ -16,6 +18,8 @@ export const updateCampaignSchema = z.object({
   description: z.string().max(1000).optional(),
   city: z.string().max(100).optional(),
   category: z.string().max(100).optional(),
+  leadSource: z.string().max(100).optional(),
+  leadIds: z.array(z.number().int().positive()).optional(),
   templateId: z.number().int().positive().optional(),
   channel: z.enum(['EMAIL', 'WHATSAPP']).optional(),
   dailyLimit: z.number().int().min(1).max(500).optional(),
@@ -26,6 +30,7 @@ export const listCampaignQuerySchema = z.object({
   status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED']).optional(),
   city: z.string().optional(),
   category: z.string().optional(),
+  leadSource: z.string().optional(),
 });
 
 export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;

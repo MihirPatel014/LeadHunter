@@ -303,7 +303,13 @@ export const CampaignsPage: React.FC = () => {
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Tag className="w-3.5 h-3.5 text-primary/70 shrink-0" />
                       <span className="truncate">
-                        Category: <strong className="text-foreground">{campaign.category || 'All'}</strong>
+                        {campaign.leadIds && campaign.leadIds.length > 0 ? (
+                          <span className="text-primary font-semibold">
+                            🎯 {campaign.leadIds.length} Target Leads
+                          </span>
+                        ) : (
+                          <>Category: <strong className="text-foreground">{campaign.category || 'All'}</strong></>
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-muted-foreground">

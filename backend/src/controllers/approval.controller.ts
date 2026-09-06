@@ -61,9 +61,44 @@ export class ApprovalController {
   /** POST /api/approvals/:id/reject */
   reject = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const validated = rejectApprovalSchema.parse(req.body);
-      const data = await this.approvalService.reject(Number(req.params.id), validated.note);
+      const { note } = req.body;
+      const data = await this.approvalService.reject(Number(req.params.id), note);
       res.status(200).json({ success: true, message: 'Approval rejected', data });
     } catch (e) { next(e); }
   };
+
+  /** POST /api/approvals/bulk-approve */
+  bulkApprove = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({ success: false, message: 'Array of approval IDs is required' });
+        return;
+      }
+      const result = await this.approvalService.bulkApprove(ids.map(Number));
+      res.status(200).json({
+        success: true,
+        message: `Bulk approve complete: ${result.approved} approved, ${result.failed} failed`,
+        data: result,
+      });
+    } catch (e) { next(e); }
+  };
+
+  /** POST /api/approvals/bulk-reject */
+  bulkReject = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { ids, note } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({ success: false, message: 'Array of approval IDs is required' });
+        return;
+      }
+      const result = await this.approvalService.bulkReject(ids.map(Number), note);
+      res.status(200).json({
+        success: true,
+        message: `Bulk reject complete: ${result.rejected} rejected`,
+        data: result,
+      });
+    } catch (e) { next(e); }
+  };
 }
+

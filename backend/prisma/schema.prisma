@@ -96,6 +96,8 @@ model Campaign {
   description String?
   city        String?
   category    String?
+  leadSource  String?  // Optional lead source filter (e.g. CSV_IMPORT, GOOGLE_MAPS, MANUAL)
+  leadIds     String?  // Optional JSON array of specific lead IDs e.g. "[1, 2, 3]"
   templateId  Int
   channel     String   @default("EMAIL")  // EMAIL | WHATSAPP
   dailyLimit  Int      @default(20)

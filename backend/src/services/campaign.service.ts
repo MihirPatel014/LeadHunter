@@ -73,25 +73,33 @@ export class CampaignService {
 
   /**
    * Run a campaign: match eligible leads, render the template, and push each
-   * into the approval queue.  Does NOT send any emails directly.
+   * into the approval queue. Does NOT send any emails directly.
    */
-  async run(id: number): Promise<CampaignRunResult> {
+  async run(id: number, overrideLeadIds?: number[]): Promise<CampaignRunResult> {
     const campaign = await this.getById(id);
 
     // 1. Fetch the template
     const template = await this.templateService.getTemplateById(campaign.templateId);
 
-    // 2. Query matching leads (city + category filters, capped at dailyLimit)
+    // 2. Query matching leads (leadIds list or city + category + leadSource filters)
+    const targetLeadIds = overrideLeadIds?.length ? overrideLeadIds : campaign.leadIds;
+
     const whereClause: Record<string, any> = {
       status: { notIn: INELIGIBLE_LEAD_STATUSES },
     };
-    if (campaign.city) whereClause['city'] = { contains: campaign.city };
-    if (campaign.category) whereClause['category'] = { contains: campaign.category };
+
+    if (targetLeadIds && targetLeadIds.length > 0) {
+      whereClause['id'] = { in: targetLeadIds };
+    } else {
+      if (campaign.city) whereClause['city'] = { contains: campaign.city };
+      if (campaign.category) whereClause['category'] = { contains: campaign.category };
+      if (campaign.leadSource) whereClause['source'] = campaign.leadSource;
+    }
 
     const leads = await prisma.lead.findMany({
       where: whereClause,
-      take: campaign.dailyLimit * 3, // fetch extra to account for skips
-      orderBy: { score: 'desc' },
+      take: targetLeadIds && targetLeadIds.length > 0 ? targetLeadIds.length : campaign.dailyLimit * 3, // fetch sufficient leads
+      orderBy: targetLeadIds && targetLeadIds.length > 0 ? { createdAt: 'desc' } : { score: 'desc' },
     });
 
     // 3. Fetch existing PENDING_APPROVAL / DRAFT approvals for deduplication
@@ -109,8 +117,10 @@ export class CampaignService {
     const reasons = { noEmail: 0, alreadyQueued: 0, ineligibleStatus: 0 };
     let enqueued = 0;
 
+    const effectiveLimit = targetLeadIds && targetLeadIds.length > 0 ? targetLeadIds.length : campaign.dailyLimit;
+
     for (const lead of leads) {
-      if (enqueued >= campaign.dailyLimit) break;
+      if (enqueued >= effectiveLimit) break;
 
       // Skip if already in queue
       if (alreadyQueuedLeadIds.has(lead.id)) {

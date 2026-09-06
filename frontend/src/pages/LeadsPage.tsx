@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -27,6 +27,7 @@ import {
   Globe,
   Star,
   Flame,
+  Send,
 } from 'lucide-react';
 
 import { toast, Toaster } from 'sonner';
@@ -42,6 +43,7 @@ import { CsvImportModal } from '../components/leads/CsvImportModal';
 
 export const LeadsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // View Mode: 'table' | 'cards' | 'pipeline'
   const [viewMode, setViewMode] = useState<'table' | 'cards' | 'pipeline'>('table');
@@ -237,6 +239,26 @@ export const LeadsPage: React.FC = () => {
     if (bulkStatusValue) data.status = bulkStatusValue as LeadStatus;
     if (bulkTempValue) data.temperature = bulkTempValue as TemperatureStatus;
     bulkUpdateMutation.mutate(data);
+  };
+
+  const handleStartCampaign = () => {
+    if (selectedIds.size === 0) {
+      toast.error('Please select at least one lead');
+      return;
+    }
+    const selectedList = Array.from(selectedIds);
+    // Find representative category or city from the selected leads if available
+    const selectedLeads = leads.filter((l) => selectedIds.has(l.id));
+    const firstCategory = selectedLeads.find((l) => l.category)?.category || '';
+    const firstCity = selectedLeads.find((l) => l.city)?.city || '';
+
+    navigate('/campaigns/new', {
+      state: {
+        selectedLeadIds: selectedList,
+        suggestedCategory: firstCategory,
+        suggestedCity: firstCity,
+      },
+    });
   };
 
   const colSpan = 11; // total columns including checkbox and google profile
@@ -499,6 +521,17 @@ export const LeadsPage: React.FC = () => {
                 className="px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors disabled:opacity-50"
               >
                 {bulkUpdateMutation.isPending ? 'Updating…' : 'Apply Update'}
+              </button>
+
+              <div className="h-4 w-px bg-border" />
+
+              {/* Start Campaign with Selected */}
+              <button
+                onClick={handleStartCampaign}
+                className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Start Campaign ({selectedIds.size})
               </button>
 
               <div className="h-4 w-px bg-border" />

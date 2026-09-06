@@ -52,6 +52,7 @@ export const leadService = {
     if (params.temperature) query.append('temperature', params.temperature);
     if (params.city) query.append('city', params.city);
     if (params.category) query.append('category', params.category);
+    if (params.source) query.append('source', params.source);
     if (params.websiteStatus) query.append('websiteStatus', params.websiteStatus);
     if (params.websiteType && params.websiteType !== 'ALL') query.append('websiteType', params.websiteType);
 

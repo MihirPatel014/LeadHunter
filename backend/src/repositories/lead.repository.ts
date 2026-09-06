@@ -13,6 +13,7 @@ export class LeadRepository {
     if (temperature) where.temperature = temperature;
     if (city) where.city = { contains: city };
     if (category) where.category = { contains: category };
+    if (query.source) where.source = query.source;
     if (query.websiteStatus) where.websiteStatus = query.websiteStatus;
 
     if (query.websiteType) {

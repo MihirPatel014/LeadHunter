@@ -1,4 +1,5 @@
-﻿import { ApprovalRepository } from '../repositories/approval.repository.js';
+import { prisma } from '../config/prisma.js';
+import { ApprovalRepository } from '../repositories/approval.repository.js';
 import { OutreachService } from './outreach.service.js';
 
 export interface CreateApprovalPayload {
@@ -27,8 +28,29 @@ export class ApprovalService {
     this.outreachService = new OutreachService();
   }
 
-  async list(filters: { status?: string; leadId?: number }) {
-    return this.approvalRepo.findMany(filters);
+  async list(filters: { status?: string; leadId?: number; channel?: string; templateId?: number }) {
+    const approvals = await this.approvalRepo.findMany(filters);
+
+    const leadIds = Array.from(
+      new Set(approvals.map((a) => a.leadId).filter((id): id is number => id !== null && id !== undefined))
+    );
+    const templateIds = Array.from(
+      new Set(approvals.map((a) => a.templateId).filter((id): id is number => id !== null && id !== undefined))
+    );
+
+    const [leads, templates] = await Promise.all([
+      leadIds.length > 0 ? prisma.lead.findMany({ where: { id: { in: leadIds } } }) : [],
+      templateIds.length > 0 ? prisma.template.findMany({ where: { id: { in: templateIds } } }) : [],
+    ]);
+
+    const leadMap = new Map(leads.map((l) => [l.id, l]));
+    const templateMap = new Map(templates.map((t) => [t.id, t]));
+
+    return approvals.map((approval) => ({
+      ...approval,
+      lead: approval.leadId ? leadMap.get(approval.leadId) || null : null,
+      template: approval.templateId ? templateMap.get(approval.templateId) || null : null,
+    }));
   }
 
   async getById(id: number) {
@@ -38,7 +60,16 @@ export class ApprovalService {
       err.statusCode = 404;
       throw err;
     }
-    return record;
+    const [lead, template] = await Promise.all([
+      record.leadId ? prisma.lead.findUnique({ where: { id: record.leadId } }) : null,
+      record.templateId ? prisma.template.findUnique({ where: { id: record.templateId } }) : null,
+    ]);
+
+    return {
+      ...record,
+      lead,
+      template,
+    };
   }
 
   async create(payload: CreateApprovalPayload) {
@@ -144,4 +175,40 @@ export class ApprovalService {
       reviewNote: note ?? '',
     });
   }
+
+  async bulkApprove(ids: number[]) {
+    const results: { approved: number; failed: number; errors: Array<{ id: number; error: string }> } = {
+      approved: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    for (const id of ids) {
+      try {
+        await this.approve(id);
+        results.approved++;
+      } catch (err: any) {
+        results.failed++;
+        results.errors.push({ id, error: err.message || 'Failed to dispatch' });
+      }
+    }
+
+    return results;
+  }
+
+  async bulkReject(ids: number[], note?: string) {
+    const result = await prisma.approval.updateMany({
+      where: {
+        id: { in: ids },
+        status: { in: ['PENDING_APPROVAL', 'DRAFT'] },
+      },
+      data: {
+        status: 'REJECTED',
+        reviewNote: note || 'Bulk rejected by reviewer',
+      },
+    });
+
+    return { rejected: result.count };
+  }
 }
+

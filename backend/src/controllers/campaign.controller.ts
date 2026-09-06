@@ -78,7 +78,8 @@ export const runCampaign = async (req: Request, res: Response, next: NextFunctio
       res.status(400).json({ success: false, message: 'Invalid campaign ID' });
       return;
     }
-    const result = await campaignService.run(id);
+    const leadIds = Array.isArray(req.body?.leadIds) ? req.body.leadIds.map(Number).filter((n: number) => !isNaN(n)) : undefined;
+    const result = await campaignService.run(id, leadIds);
     res.json({
       success: true,
       message: `Campaign run complete: ${result.enqueued} enqueued, ${result.skipped} skipped`,

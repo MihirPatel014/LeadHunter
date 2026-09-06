@@ -8,6 +8,8 @@ export type ApprovalStatus =
 
 export type ApprovalChannel = 'EMAIL' | 'WHATSAPP';
 
+import { Lead } from './lead';
+
 export interface Approval {
   id: number;
   leadId: number | null;
@@ -21,6 +23,12 @@ export interface Approval {
   sentMessageId: number | null;
   createdAt: string;
   updatedAt: string;
+  lead?: Lead | null;
+  template?: {
+    id: number;
+    name: string;
+    channel: string;
+  } | null;
 }
 
 export interface CreateApprovalPayload {

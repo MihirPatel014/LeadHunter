@@ -7,6 +7,8 @@ export interface Campaign {
   description?: string | null;
   city?: string | null;
   category?: string | null;
+  leadSource?: string | null;
+  leadIds?: number[] | null;
   templateId: number;
   channel: CampaignChannel;
   dailyLimit: number;
@@ -20,6 +22,8 @@ export interface CreateCampaignPayload {
   description?: string;
   city?: string;
   category?: string;
+  leadSource?: string;
+  leadIds?: number[];
   templateId: number;
   channel?: CampaignChannel;
   dailyLimit?: number;
@@ -31,6 +35,8 @@ export interface UpdateCampaignPayload {
   description?: string;
   city?: string;
   category?: string;
+  leadSource?: string;
+  leadIds?: number[];
   templateId?: number;
   channel?: CampaignChannel;
   dailyLimit?: number;
@@ -46,3 +52,4 @@ export interface CampaignRunResult {
     ineligibleStatus: number;
   };
 }
+
