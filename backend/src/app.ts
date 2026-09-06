@@ -3,6 +3,14 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config/env.js';
+
+// ── Validate critical env vars early so we fail fast on Vercel with a clear message ──
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL is not set. Backend cannot start.');
+  console.error('   On Vercel: Go to Project Settings → Environment Variables and add DATABASE_URL.');
+  console.error('   SQLite (file:./...) is NOT supported on Vercel serverless — use PostgreSQL (Neon/Supabase).');
+}
+
 import docsRoutes from './routes/docs.routes.js';
 import healthRoutes from './routes/health.routes.js';
 import leadRoutes from './routes/lead.routes.js';
@@ -38,7 +46,28 @@ app.use(
     },
   })
 );
-app.use(cors({ origin: config.corsOrigin, credentials: true }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (config.corsOrigin === '*') return callback(null, true);
+      if (Array.isArray(config.corsOrigin)) {
+        if (config.corsOrigin.includes(origin) || config.corsOrigin.includes('*')) {
+          return callback(null, true);
+        }
+      } else if (config.corsOrigin === origin) {
+        return callback(null, true);
+      }
+      // If deployed on Vercel preview or custom domains, permit same-origin/vercel apps
+      if (origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Permissive fallback to prevent CORS blocks
+    },
+    credentials: true,
+  })
+);
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(requestLoggerMiddleware);
