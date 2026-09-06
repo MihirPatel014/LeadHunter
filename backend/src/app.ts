@@ -5,10 +5,10 @@ import morgan from 'morgan';
 import { config } from './config/env.js';
 
 // ── Validate critical env vars early so we fail fast on Vercel with a clear message ──
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL is not set. Backend cannot start.');
-  console.error('   On Vercel: Go to Project Settings → Environment Variables and add DATABASE_URL.');
-  console.error('   SQLite (file:./...) is NOT supported on Vercel serverless — use PostgreSQL (Neon/Supabase).');
+if (!process.env.TURSO_DATABASE_URL) {
+  console.error('❌ TURSO_DATABASE_URL is not set. Backend cannot start.');
+  console.error('   On Vercel: Go to Project Settings → Environment Variables and add TURSO_DATABASE_URL + TURSO_AUTH_TOKEN.');
+  console.error('   Get your URL and token from https://turso.tech after creating a database.');
 }
 
 import docsRoutes from './routes/docs.routes.js';

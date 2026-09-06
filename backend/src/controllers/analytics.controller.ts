@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/prisma.js';
 import { Request, Response, NextFunction } from 'express';
 
-const prisma = new PrismaClient();
 
 /**
  * GET /api/analytics/overview
