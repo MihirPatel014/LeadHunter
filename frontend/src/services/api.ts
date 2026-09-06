@@ -8,11 +8,14 @@ export interface ApiResponse<T = any> {
 
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const method = options.method || 'GET';
+  const baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${endpoint}`;
+
   if (import.meta.env.DEV) {
-    console.debug(`[HTTP Request] ${method} ${endpoint}`, options.body || '');
+    console.debug(`[HTTP Request] ${method} ${url}`, options.body || '');
   }
 
-  const response = await fetch(endpoint, {
+  const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -31,7 +34,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     // Automatically report client-side API errors to backend log buffer (skip /api/logs to prevent recursion)
     if (!endpoint.includes('/api/logs')) {
       try {
-        fetch('/api/logs/client', {
+        fetch(`${baseUrl}/api/logs/client`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
